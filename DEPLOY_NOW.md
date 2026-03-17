@@ -52,7 +52,7 @@ Branch: master
 Root Directory: backend
 Runtime: Python
 Build Command: pip install -r requirements.txt
-Start Command: bash start.sh
+Start Command: bash start.sh (uses gunicorn with uvicorn workers)
 ``` 
 
 #### Add Environment Variables:
