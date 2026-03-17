@@ -5,11 +5,22 @@ Launcher for FastAPI app - handles module discovery across different Python envi
 import os
 import sys
 import subprocess
+import site
 
 # Ensure we're in the correct directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 sys.path.insert(0, script_dir)
+
+# Add all possible site-packages locations to path
+site.addsitedir('/opt/render/.local/lib/python3.11/site-packages')
+site.addsitedir('/usr/local/lib/python3.11/dist-packages')
+site.addsitedir('/usr/lib/python3/dist-packages')
+sys.path.extend([
+    '/opt/render/.local/lib/python3.11/site-packages',
+    '/usr/local/lib/python3.11/dist-packages',
+    '/usr/lib/python3/dist-packages'
+])
 
 try:
     import uvicorn
@@ -17,13 +28,19 @@ try:
 except ImportError as e:
     print(f"ERROR: {e}")
     print(f"Python: {sys.executable}")
+    print(f"Python version: {sys.version}")
     print(f"Path: {sys.path}")
     print("\nAttempting to install missing dependencies...")
     try:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--break-system-packages", "-r", "requirements.txt"])
-    except subprocess.CalledProcessError:
-        print("Failed to install via pip. Trying without system packages check...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+    except subprocess.CalledProcessError as e:
+        print(f"Install failed with status {e.returncode}. Retrying...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "-r", "requirements.txt"])
+    
+    # Reload site packages after installation
+    site.addsitedir('/opt/render/.local/lib/python3.11/site-packages')
+    sys.path.insert(0, '/opt/render/.local/lib/python3.11/site-packages')
+    
     # Try import again
     import uvicorn
     from main import app
