@@ -1,3 +1,2 @@
 #!/bin/bash
-cd "$(dirname "$0")"
-exec python3 run.py
+exec python3 /opt/render/project/src/backend/run.py
