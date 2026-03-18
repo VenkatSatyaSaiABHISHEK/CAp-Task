@@ -15,8 +15,7 @@ services:
       - key: DB_USER
         value: avnadmin
       - key: DB_PASSWORD
-        value: AVNS_HzyFjrEuIppSWhV7Tue
-        isSecret: true
+        sync: false
       - key: DB_SSLMODE
         value: require
       - key: FRONTEND_URL
