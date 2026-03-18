@@ -7,15 +7,15 @@ services:
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DB_HOST
-        value: # Set to your PostgreSQL host
+        value: pg-33c86bd8-water-level.f.aivencloud.com
       - key: DB_PORT
-        value: 5432
+        value: 24446
       - key: DB_NAME
-        value: # Set to your database name
+        value: defaultdb
       - key: DB_USER
-        value: # Set to your database user
+        value: avnadmin
       - key: DB_PASSWORD
-        value: # Set to your database password (use secret)
+        value: AVNS_HzyFjrEuIppSWhV7Tue
         isSecret: true
       - key: DB_SSLMODE
         value: require
