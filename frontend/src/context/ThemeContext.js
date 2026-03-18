@@ -2,19 +2,26 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const ThemeContext = createContext();
 
+const defaultColors = {
+  bg: '#ffffff',
+  bgSecondary: '#f7f8f9',
+  text: '#0d0d0d',
+  textSecondary: '#6b7280',
+  border: '#e5e7eb',
+  card: '#ffffff',
+  accent: '#0d0d0d',
+  accentLight: '#1f2937',
+  success: '#34d399',
+  warning: '#fbbf24',
+  error: '#f87171',
+  shadow: 'rgba(0, 0, 0, 0.02)',
+  shadowLg: 'rgba(0, 0, 0, 0.05)',
+  glass: 'rgba(255, 255, 255, 0.95)',
+  glassLight: 'rgba(255, 255, 255, 0.7)',
+};
+
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState('day');
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'day';
-    setTheme(savedTheme);
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'day' ? 'night' : 'day';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-  };
 
   const themeColors = {
     day: {
@@ -53,8 +60,21 @@ export const ThemeProvider = ({ children }) => {
     },
   };
 
+  const colors = themeColors[theme] || defaultColors;
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'day';
+    setTheme(savedTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'day' ? 'night' : 'day';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, colors: themeColors[theme] }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, colors }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -63,7 +83,7 @@ export const ThemeProvider = ({ children }) => {
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
+    return { theme: 'day', toggleTheme: () => {}, colors: defaultColors };
   }
-  return context;
+  return { ...context, colors: context.colors || defaultColors };
 };

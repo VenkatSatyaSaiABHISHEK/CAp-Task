@@ -12,11 +12,14 @@ import './styles/App.css';
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const [isConnected, setIsConnected] = useState(false);
 
+  // Safeguard: ensure colors has a value
+  const bgColor = colors?.bg || '#ffffff';
+
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100%', backgroundColor: colors.bg }}>
+    <div style={{ display: 'flex', height: '100vh', width: '100%', backgroundColor: bgColor }}>
       {/* Left Sidebar - Always visible on desktop */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -39,7 +42,7 @@ function AppContent() {
             flex: 1,
             overflowY: 'auto',
             overflowX: 'hidden',
-            backgroundColor: colors.bg,
+            backgroundColor: bgColor,
           }}
         >
           <Routes>

@@ -38,84 +38,16 @@ const Sidebar = ({ isOpen, onClose }) => {
           flexShrink: 0,
         }}
       >
-        {/* Logo Section */}
-        <div
-          style={{
-            padding: '20px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            minHeight: '64px',
-            borderBottom: `1px solid ${sidebarBorder}`,
-          }}
-        >
-          <Link
-            to="/"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              flex: 1,
-              textDecoration: 'none',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '24px',
-                fontWeight: '800',
-                color: colors.text,
-                width: '40px',
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '10px',
-                backgroundColor: theme === 'day' ? '#f0f0f0' : '#2d2d2d',
-              }}
-            >
-              💧
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '2px',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  color: colors.text,
-                  margin: 0,
-                  letterSpacing: '-0.3px',
-                }}
-              >
-                KIET Water
-              </div>
-              <div
-                style={{
-                  fontSize: '11px',
-                  color: colors.textSecondary,
-                  margin: 0,
-                  fontWeight: '500',
-                }}
-              >
-                IoT Monitor
-              </div>
-            </div>
-          </Link>
-        </div>
 
         {/* Navigation Items */}
         <nav
           style={{
             flex: 1,
-            padding: '12px 8px',
+            padding: '6px 4px',
             overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
+            gap: '2px',
           }}
         >
           {navItems.map((item) => {
@@ -131,15 +63,15 @@ const Sidebar = ({ isOpen, onClose }) => {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    padding: '11px 14px',
-                    borderRadius: '10px',
+                    gap: '10px',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
                     cursor: 'pointer',
                     backgroundColor: active ? activeBg : 'transparent',
                     transition: 'all 0.25s ease',
                     color: active ? colors.text : colors.textSecondary,
                     fontWeight: active ? '600' : '500',
-                    fontSize: '14px',
+                    fontSize: '13px',
                   }}
                   onMouseEnter={(e) => {
                     if (!active) {
