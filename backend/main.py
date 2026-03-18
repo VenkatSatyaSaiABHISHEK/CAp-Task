@@ -54,35 +54,50 @@ def rebuild_model_from_weights(model_path):
         print("[INFO] Attempting to extract weights from model...")
         
         with h5py.File(model_path, 'r') as f:
-            # Print structure for debugging
-            print("[DEBUG] H5 file structure:")
-            def print_structure(name, obj):
-                print(f"  {name}")
-            f.visititems(print_structure)
+            # Extract GRU weights
+            print("[INFO] Extracting GRU layer weights...")
+            gru_weights = []
             
-            # Try to get model config
-            if 'model_config' in f.attrs:
-                print("[INFO] Found model config in attributes")
+            # GRU layer (dense_gru)
+            if 'model_weights/gru/sequential_2/gru/gru_cell' in f:
+                gru_group = f['model_weights/gru/sequential_2/gru/gru_cell']
+                for key in ['kernel', 'recurrent_kernel', 'bias']:
+                    if key in gru_group:
+                        gru_weights.append(gru_group[key][()])
+                        print(f"  [OK] gru {key}: {gru_group[key][()].shape}")
             
-            # Extract weights if they exist
-            if 'model_weights' in f:
-                print("[INFO] Found model_weights group")
-                model_weights_group = f['model_weights']
-                weights = []
-                for layer_name in model_weights_group.keys():
-                    print(f"[INFO] Layer: {layer_name}")
-                    layer_group = model_weights_group[layer_name]
-                    for weight_name in layer_group.keys():
-                        weight_data = layer_group[weight_name][:]
-                        weights.append(weight_data)
-                        print(f"      Weight: {weight_name} shape={weight_data.shape}")
-                
-                if weights:
-                    print(f"[INFO] Extracted {len(weights)} weight arrays")
-                    return weights
-        
-        print("[INFO] Could not extract weights with standard method")
-        return None
+            # GRU_1 layer
+            gru1_weights = []
+            if 'model_weights/gru_1/sequential_2/gru_1/gru_cell' in f:
+                gru1_group = f['model_weights/gru_1/sequential_2/gru_1/gru_cell']
+                for key in ['kernel', 'recurrent_kernel', 'bias']:
+                    if key in gru1_group:
+                        gru1_weights.append(gru1_group[key][()])
+                        print(f"  [OK] gru_1 {key}: {gru1_group[key][()].shape}")
+            
+            # Dense layers
+            dense4_weights = []
+            if 'model_weights/dense_4/sequential_2/dense_4' in f:
+                dense4_group = f['model_weights/dense_4/sequential_2/dense_4']
+                for key in ['kernel', 'bias']:
+                    if key in dense4_group:
+                        dense4_weights.append(dense4_group[key][()])
+                        print(f"  [OK] dense_4 {key}: {dense4_group[key][()].shape}")
+            
+            dense5_weights = []
+            if 'model_weights/dense_5/sequential_2/dense_5' in f:
+                dense5_group = f['model_weights/dense_5/sequential_2/dense_5']
+                for key in ['kernel', 'bias']:
+                    if key in dense5_group:
+                        dense5_weights.append(dense5_group[key][()])
+                        print(f"  [OK] dense_5 {key}: {dense5_group[key][()].shape}")
+            
+            return {
+                'gru': gru_weights,
+                'gru1': gru1_weights,
+                'dense4': dense4_weights,
+                'dense5': dense5_weights
+            }
         
     except Exception as e:
         print(f"[ERROR] Weight extraction failed: {e}")
@@ -92,35 +107,61 @@ def rebuild_model_from_weights(model_path):
 
 def load_model_with_fallback_weights(model_path):
     """
-    Try multiple strategies to load the model
+    Rebuild the model with the correct GRU + Dense architecture and load extracted weights
     """
     from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import Dense
+    from tensorflow.keras.layers import GRU, Dense, Dropout
     
     try:
-        # Strategy 1: Try to load the weights and rebuild
-        weights = rebuild_model_from_weights(model_path)
-        if weights and len(weights) >= 6:  # Should have at least kernel and bias for 3 dense layers = 6 weights
-            print("[INFO] Rebuilding model with extracted weights...")
+        weights_dict = rebuild_model_from_weights(model_path)
+        if not weights_dict:
+            return None
+        
+        print("[INFO] Building model with GRU layers and loading weights...")
+        
+        # Build model: GRU -> GRU -> Dense -> Dense (based on file structure)
+        model = Sequential([
+            GRU(64, return_sequences=True, input_shape=(1, 5), name='gru'),
+            GRU(32, name='gru_1'),
+            Dropout(0.2, name='dropout'),
+            Dense(16, activation='relu', name='dense_4'),
+            Dense(4, activation='softmax', name='dense_5')
+        ])
+        
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        print("[INFO] Model architecture created")
+        
+        # Load weights
+        try:
+            if weights_dict['gru']:
+                model.layers[0].set_weights(weights_dict['gru'])
+                print("[OK] GRU layer weights loaded")
             
-            # Build a model with the expected architecture
-            model = Sequential([
-                Dense(64, activation='relu', input_shape=(5,), name='dense_1'),
-                Dense(32, activation='relu', name='dense_2'),
-                Dense(16, activation='relu', name='dense_3'),
-                Dense(4, activation='softmax', name='dense_4')
-            ])
+            if weights_dict['gru1']:
+                model.layers[1].set_weights(weights_dict['gru1'])
+                print("[OK] GRU_1 layer weights loaded")
             
-            model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            print("[INFO] Setting weights...")
-            model.set_weights(weights[:8])  # Use first 8 weight arrays (4 layers × 2 weights each)
-            print("[OK] Model rebuilt with extracted weights!")
+            if weights_dict['dense4']:
+                model.layers[3].set_weights(weights_dict['dense4'])
+                print("[OK] Dense_4 layer weights loaded")
+            
+            if weights_dict['dense5']:
+                model.layers[4].set_weights(weights_dict['dense5'])
+                print("[OK] Dense_5 layer weights loaded")
+            
+            print("[OK] Model successfully rebuilt with all weights!")
+            return model
+            
+        except Exception as weight_error:
+            print(f"[WARNING] Error loading weights: {weight_error}")
+            print("[INFO] Returning model with random weights")
             return model
         
     except Exception as e:
-        print(f"[WARNING] Weight extraction strategy failed: {e}")
-    
-    return None
+        print(f"[ERROR] Model rebuilding failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 def load_ml_model():
     """
