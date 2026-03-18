@@ -4,6 +4,7 @@ import { Ruler, Thermometer, Droplets, Waves, Wifi, WifiOff } from 'lucide-react
 import SensorCard from '../components/SensorCard';
 import WaterLevelIndicator from '../components/WaterLevelIndicator';
 import ProgressBar from '../components/ProgressBar';
+import PredictionCard from '../components/PredictionCard';
 import { useSensorData, useServerStatus } from '../hooks/useSensorData';
 
 const Dashboard = () => {
@@ -113,6 +114,7 @@ const Dashboard = () => {
             color="sky"
             loading={loading}
           />
+          <PredictionCard sensorData={displayData} isConnected={isServerConnected} />
         </div>
 
         <div className="lg:col-span-1">

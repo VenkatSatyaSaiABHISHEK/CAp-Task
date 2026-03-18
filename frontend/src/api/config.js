@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
   SENSOR_LATEST: `${API_BASE_URL}/api/v1/sensor/latest`,
   SENSOR_HISTORY: `${API_BASE_URL}/api/v1/sensor/history`,
   PREDICT: `${API_BASE_URL}/api/v1/predict`,
+  PREDICT_WATER: `${API_BASE_URL}/api/v1/predict-water`,
   MODEL_INFO: `${API_BASE_URL}/api/v1/model-info`,
   PREDICTIONS_HISTORY: `${API_BASE_URL}/api/v1/predictions/history`,
   TEST: `${API_BASE_URL}/api/v1/test`,
