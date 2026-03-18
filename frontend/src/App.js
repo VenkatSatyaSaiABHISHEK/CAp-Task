@@ -1,39 +1,88 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import { ThemeProvider } from './context/ThemeContext';
 import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 import Home from './pages/Home';
-import Prediction from './pages/Prediction';
+import Analytics from './pages/Analytics';
 import History from './pages/History';
 import Settings from './pages/Settings';
-import About from './pages/About';
+import { useTheme } from './context/ThemeContext';
 import './styles/App.css';
 
-function App() {
+function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  const { colors } = useTheme();
+  const [isConnected, setIsConnected] = useState(false);
 
   return (
-    <Router>
-      <div className="app-layout">
-        <Navbar onMenuClick={toggleSidebar} />
-        <div className="main-container">
-          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-          <main className="content">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/prediction" element={<Prediction />} />
-              <Route path="/history" element={<History />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/about" element={<About />} />
-            </Routes>
-          </main>
+    <div style={{ display: 'flex', height: '100vh', width: '100%', backgroundColor: colors.bg }}>
+      {/* Left Sidebar - Always visible on desktop */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Main Content Area - Takes remaining space after sidebar */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          marginLeft: 0,
+        }}
+      >
+        {/* Header */}
+        <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} isConnected={isConnected} />
+
+        {/* Page Content */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            backgroundColor: colors.bg,
+          }}
+        >
+          <Routes>
+            <Route
+              path="/"
+              element={<Home onMenuClick={() => setSidebarOpen(!sidebarOpen)} setIsConnected={setIsConnected} />}
+            />
+            <Route
+              path="/analytics"
+              element={<Analytics onMenuClick={() => setSidebarOpen(!sidebarOpen)} />}
+            />
+            <Route
+              path="/history"
+              element={<History onMenuClick={() => setSidebarOpen(!sidebarOpen)} />}
+            />
+            <Route
+              path="/settings"
+              element={<Settings onMenuClick={() => setSidebarOpen(!sidebarOpen)} />}
+            />
+          </Routes>
         </div>
       </div>
-    </Router>
+
+      {/* Mobile Styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          div[style*="margin-left: 260px"] {
+            margin-left: 0 !important;
+            width: 100% !important;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </ThemeProvider>
   );
 }
 

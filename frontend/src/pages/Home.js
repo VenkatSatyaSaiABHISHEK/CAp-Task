@@ -1,228 +1,498 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Ruler, Thermometer, Droplets, Activity, Database, Zap } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import ChatNotificationPanel from '../components/ChatNotificationPanel';
 import { apiEndpoints } from '../utils/api';
 import '../styles/Home.css';
-import config from '../config';
-import { FaRuler, FaThermometerHalf, FaTint, FaVial, FaSync, FaCheckCircle, FaServer, FaBrain, FaSignal, FaWifi, FaBan } from 'react-icons/fa';
-import SensorCard from '../components/SensorCard';
-import WaterLevelIndicator from '../components/WaterLevelIndicator';
-import ProgressBar from '../components/ProgressBar';
-import { useSensorData, useServerStatus } from '../hooks/useSensorData';
 
-const Home = () => {
-  const { data: sensorData, loading, error, isConnected } = useSensorData();
-  const { status: serverStatus, isConnected: isServerConnected } = useServerStatus();
-  const [sensorHistory, setSensorHistory] = useState([]);
-  const [modelInfo, setModelInfo] = useState(null);
+const Home = ({ onMenuClick, setIsConnected }) => {
+  const { colors, theme } = useTheme();
+  const [sensorData, setSensorData] = useState(null);
+  const [isConnected, setIsConnectedLocal] = useState(false);
+  const [lastSync, setLastSync] = useState('Never');
+  const [systemUptime] = useState('24h 15m');
+  const [dataPoints] = useState(15340);
+  const [messages, setMessages] = useState([
+    { id: 1, text: 'System initialized and ready', type: 'info', timestamp: new Date(Date.now() - 5000) },
+    { id: 2, text: 'Backend connected successfully', type: 'success', timestamp: new Date() },
+  ]);
 
   useEffect(() => {
-    const fetchAdditionalData = async () => {
+    const fetchData = async () => {
       try {
-        const [historyRes, modelRes] = await Promise.all([
-          apiEndpoints.getSensorHistory(20),
-          apiEndpoints.getModelInfo()
-        ]);
-
-        setSensorHistory(historyRes.data.data || []);
-        setModelInfo(modelRes.data.model_info);
-      } catch (err) {
-        console.error('Error fetching additional data:', err);
+        const response = await apiEndpoints.getSensorLatest();
+        if (response.data && response.data.data) {
+          const data = response.data.data;
+          setSensorData({
+            distance: parseFloat(data.distance) || 0,
+            temperature: parseFloat(data.temperature) || 0,
+            waterPercentage: parseFloat(data.water_percentage) || 0,
+            waterLevel: parseFloat(data.water_liters) || 0,
+            timestamp: data.timestamp || new Date(),
+          });
+          setIsConnectedLocal(true);
+          if (setIsConnected) setIsConnected(true);
+          const now = new Date();
+          setLastSync(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+          addMessage(`Water level updated to ${data.water_percentage}%`, 'success');
+        }
+      } catch (error) {
+        setIsConnectedLocal(false);
+        if (setIsConnected) setIsConnected(false);
+        addMessage('Connection error: Unable to fetch sensor data', 'error');
       }
     };
 
-    fetchAdditionalData();
-    const interval = setInterval(fetchAdditionalData, 30000);
+    fetchData();
+    const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [setIsConnected]);
 
-  const displayData = sensorData ? {
-    distance: parseFloat(sensorData.distance) || 0,
-    temperature: parseFloat(sensorData.temperature) || 0,
-    waterPercentage: parseFloat(sensorData.water_percentage) || 0,
-    waterLevel: parseFloat(sensorData.water_liters) || 0,
-    timestamp: sensorData.timestamp || 'N/A'
-  } : {
+  const addMessage = (text, type = 'info') => {
+    const id = Date.now();
+    setMessages((prev) => [...prev, { id, text, type, timestamp: new Date() }]);
+  };
+
+  const displayData = sensorData || {
     distance: 0,
     temperature: 0,
     waterPercentage: 0,
     waterLevel: 0,
-    timestamp: 'No data'
+  };
+
+  const pageStyle = {
+    backgroundColor: colors.bg,
+    minHeight: '100%',
+    transition: 'background-color 0.3s ease',
+    padding: '32px 24px',
+  };
+
+  const containerStyle = {
+    maxWidth: '1200px',
+    margin: '0 auto',
+  };
+
+  const sectionTitleStyle = {
+    color: colors.text,
+    fontSize: '16px',
+    fontWeight: '700',
+    margin: '0 0 12px 0',
+    letterSpacing: '-0.01em',
+  };
+
+  const sectionSubtitleStyle = {
+    color: colors.textSecondary,
+    fontSize: '12px',
+    margin: '0 0 16px 0',
+    fontWeight: '500',
+  };
+
+  const cardStyle = {
+    background: colors.card,
+    border: `1px solid ${colors.border}`,
+    borderRadius: '12px',
+    padding: '20px',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: `0 1px 2px ${colors.shadow}`,
+  };
+
+  const glassCardStyle = {
+    background: theme === 'day'
+      ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.6))'
+      : 'linear-gradient(135deg, rgba(26, 26, 26, 0.8), rgba(26, 26, 26, 0.6))',
+    backdropFilter: 'blur(12px)',
+    borderRadius: '12px',
+    border: theme === 'day'
+      ? '1px solid rgba(0, 0, 0, 0.05)'
+      : '1px solid rgba(255, 255, 255, 0.08)',
+    padding: '20px',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 md:px-8 lg:px-12 max-w-7xl mx-auto">
-      {/* Connection Status Banner */}
-      <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
-        isServerConnected 
-          ? 'bg-green-100 text-green-800' 
-          : 'bg-red-100 text-red-800'
-      }`}>
-        {isServerConnected ? (
-          <FaWifi className="w-5 h-5" />
-        ) : (
-          <FaBan className="w-5 h-5" />
-        )}
-        <div>
-          <span className="font-semibold">
-            {isServerConnected ? '✓ Connected to Backend Server' : '✗ Disconnected from Backend'}
-          </span>
-          <p className="text-sm">
-            {isServerConnected ? 'All systems operational' : 'Attempting to reconnect...'}
-          </p>
+    <div style={pageStyle}>
+      <div style={containerStyle}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', alignItems: 'start' }}>
+          <div>
+            {/* Page Title */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              style={{ marginBottom: '32px' }}
+            >
+              <h2
+                style={{
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: colors.text,
+                  margin: '0 0 6px 0',
+                  letterSpacing: '-0.5px',
+                }}
+              >
+                Water Tank Monitor
+              </h2>
+              <p style={{ fontSize: '13px', color: colors.textSecondary, margin: 0, fontWeight: '500' }}>
+                Real-time monitoring and analytics
+              </p>
+            </motion.div>
+
+            {/* Tank Level Card - Main */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              style={{ ...glassCardStyle, marginBottom: '24px' }}
+            >
+              <div style={{ marginBottom: '20px' }}>
+                <p
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    color: colors.textSecondary,
+                    margin: 0,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  Tank Level
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div>
+                  <div
+                    style={{
+                      fontSize: '56px',
+                      fontWeight: '800',
+                      color: colors.text,
+                      margin: '0 0 4px 0',
+                      letterSpacing: '-1px',
+                    }}
+                  >
+                    {displayData.waterPercentage.toFixed(1)}
+                    <span style={{ fontSize: '28px', marginLeft: '6px', fontWeight: '700' }}>%</span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: colors.textSecondary, margin: 0, fontWeight: '500' }}>
+                    {displayData.waterLevel.toFixed(1)}L stored
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '11px', color: colors.textSecondary, margin: '0 0 4px 0', fontWeight: '500' }}>
+                    Last updated
+                  </p>
+                  <p style={{ fontSize: '13px', color: colors.text, fontWeight: '600', margin: 0 }}>
+                    {lastSync}
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div
+                style={{
+                  position: 'relative',
+                  height: '10px',
+                  backgroundColor: theme === 'day' ? '#e5e7eb' : '#2d2d2d',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  marginBottom: '16px',
+                }}
+              >
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${displayData.waterPercentage}%` }}
+                  transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    height: '100%',
+                    background:
+                      displayData.waterPercentage > 85
+                        ? '#34d399'
+                        : displayData.waterPercentage > 50
+                          ? '#fbbf24'
+                          : '#f87171',
+                    borderRadius: '8px',
+                    boxShadow:
+                      displayData.waterPercentage > 85
+                        ? '0 0 12px rgba(52, 211, 153, 0.4)'
+                        : displayData.waterPercentage > 50
+                          ? '0 0 12px rgba(251, 191, 36, 0.4)'
+                          : '0 0 12px rgba(248, 113, 113, 0.4)',
+                  }}
+                />
+              </div>
+
+              {/* Status Message */}
+              <p style={{ fontSize: '12px', color: colors.textSecondary, margin: 0, fontWeight: '500' }}>
+                {displayData.waterPercentage > 85
+                  ? '✓ Tank is full'
+                  : displayData.waterPercentage > 50
+                    ? '● Tank is half full'
+                    : displayData.waterPercentage > 20
+                      ? '⚠ Tank is low'
+                      : '!! Tank is critically low'}
+              </p>
+            </motion.div>
+
+            {/* Live Readings */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              style={{ marginBottom: '32px' }}
+            >
+              <h3 style={sectionTitleStyle}>Live Readings</h3>
+              <p style={sectionSubtitleStyle}>Real-time sensor data</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+                {/* Distance Card */}
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <Ruler size={16} color={colors.textSecondary} />
+                    <p style={{ fontSize: '12px', color: colors.textSecondary, margin: 0, fontWeight: '600' }}>
+                      Distance
+                    </p>
+                  </div>
+                  <p style={{ fontSize: '18px', fontWeight: '700', color: colors.text, margin: 0 }}>
+                    {displayData.distance.toFixed(1)}
+                    <span style={{ fontSize: '11px', marginLeft: '4px' }}>cm</span>
+                  </p>
+                  <p style={{ fontSize: '11px', color: colors.textSecondary, margin: '6px 0 0 0', fontWeight: '500' }}>
+                    From surface
+                  </p>
+                </div>
+
+                {/* Temperature Card */}
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <Thermometer size={16} color={colors.textSecondary} />
+                    <p style={{ fontSize: '12px', color: colors.textSecondary, margin: 0, fontWeight: '600' }}>
+                      Temperature
+                    </p>
+                  </div>
+                  <p style={{ fontSize: '18px', fontWeight: '700', color: colors.text, margin: 0 }}>
+                    {displayData.temperature.toFixed(1)}
+                    <span style={{ fontSize: '11px', marginLeft: '4px' }}>°C</span>
+                  </p>
+                  <p style={{ fontSize: '11px', color: colors.textSecondary, margin: '6px 0 0 0', fontWeight: '500' }}>
+                    Ambient
+                  </p>
+                </div>
+
+                {/* Volume Card */}
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <Droplets size={16} color={colors.textSecondary} />
+                    <p style={{ fontSize: '12px', color: colors.textSecondary, margin: 0, fontWeight: '600' }}>
+                      Status
+                    </p>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      color: isConnected ? colors.success : colors.error,
+                      margin: 0,
+                    }}
+                  >
+                    {isConnected ? 'Connected' : 'Offline'}
+                  </p>
+                  <p style={{ fontSize: '11px', color: colors.textSecondary, margin: '6px 0 0 0', fontWeight: '500' }}>
+                    API Status
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* System Information */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.15 }}
+              style={{ marginBottom: '32px' }}
+            >
+              <h3 style={sectionTitleStyle}>System Information</h3>
+              <p style={sectionSubtitleStyle}>Operational status and details</p>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                  gap: '12px',
+                }}
+              >
+                <div style={cardStyle}>
+                  <p
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      color: colors.textSecondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      margin: '0 0 8px 0',
+                    }}
+                  >
+                    Connection
+                  </p>
+                  <p style={{ fontSize: '16px', fontWeight: '700', color: colors.text, margin: 0 }}>
+                    {isConnected ? 'Active' : 'Lost'}
+                  </p>
+                </div>
+                <div style={cardStyle}>
+                  <p
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      color: colors.textSecondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      margin: '0 0 8px 0',
+                    }}
+                  >
+                    System Uptime
+                  </p>
+                  <p style={{ fontSize: '16px', fontWeight: '700', color: colors.text, margin: 0 }}>
+                    {systemUptime}
+                  </p>
+                </div>
+                <div style={cardStyle}>
+                  <p
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      color: colors.textSecondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      margin: '0 0 8px 0',
+                    }}
+                  >
+                    Data Points
+                  </p>
+                  <p style={{ fontSize: '16px', fontWeight: '700', color: colors.text, margin: 0 }}>
+                    {dataPoints.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Backend Status */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <h3 style={sectionTitleStyle}>Backend Status</h3>
+              <p style={sectionSubtitleStyle}>API and services health</p>
+              <div style={cardStyle}>
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  {/* API Server */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: `linear-gradient(135deg, ${colors.success}30, ${colors.success}10)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Zap size={18} color={colors.success} />
+                    </div>
+                    <div>
+                      <p style={{ color: colors.text, fontSize: '13px', fontWeight: '600', margin: '0 0 2px 0' }}>
+                        API Server
+                      </p>
+                      <p style={{ color: colors.success, fontSize: '11px', fontWeight: '600', margin: 0 }}>
+                        V Operational
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Database */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: `linear-gradient(135deg, ${colors.success}30, ${colors.success}10)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Database size={18} color={colors.success} />
+                    </div>
+                    <div>
+                      <p style={{ color: colors.text, fontSize: '13px', fontWeight: '600', margin: '0 0 2px 0' }}>
+                        Database
+                      </p>
+                      <p style={{ color: colors.success, fontSize: '11px', fontWeight: '600', margin: 0 }}>
+                        V Connected
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Data Processing */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: `linear-gradient(135deg, ${colors.success}30, ${colors.success}10)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Activity size={18} color={colors.success} />
+                    </div>
+                    <div>
+                      <p style={{ color: colors.text, fontSize: '13px', fontWeight: '600', margin: '0 0 2px 0' }}>
+                        Data Processing
+                      </p>
+                      <p style={{ color: colors.success, fontSize: '11px', fontWeight: '600', margin: 0 }}>
+                        V Active
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Right Sidebar - Chat Notification Panel */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              height: 'fit-content',
+            }}
+          >
+            <ChatNotificationPanel messages={messages} />
+          </motion.div>
         </div>
       </div>
 
-      {/* Header Section */}
-      <header className="mb-10">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">
-          Daily Overview - {config.COLLEGE_NAME}
-        </h1>
-        <p className="text-slate-500">
-          {loading ? 'Loading sensor data...' : 'Monitoring your water tank in real-time.'}
-        </p>
-        {displayData.timestamp && displayData.timestamp !== 'No data' && (
-          <p className="text-sm text-slate-400 mt-1">
-            Last updated: {new Date(displayData.timestamp).toLocaleTimeString()}
-          </p>
-        )}
-      </header>
-
-      {/* Error Banner */}
-      {error && (
-        <div className="mb-6 p-4 bg-yellow-100 text-yellow-800 rounded-lg border border-yellow-200">
-          <p className="text-sm font-semibold">{error}</p>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-slate-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-500 font-medium">Loading sensor data...</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Main Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {/* Left Column - Sensor Cards */}
-            <div className="md:col-span-2 flex flex-col gap-6">
-              {/* Top Row - Distance & Temperature */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <SensorCard 
-                  title="Distance" 
-                  value={displayData.distance.toFixed(2)} 
-                  unit="cm" 
-                  icon={FaRuler} 
-                  color="blue"
-                  description="Distance from sensor"
-                  loading={loading}
-                />
-                <SensorCard 
-                  title="Temperature" 
-                  value={displayData.temperature.toFixed(2)} 
-                  unit="°C" 
-                  icon={FaThermometerHalf} 
-                  color="orange"
-                  description="Ambient temperature"
-                  loading={loading}
-                />
-              </div>
-
-              {/* Water Percentage Progress Bar */}
-              <ProgressBar 
-                title="Water Percentage" 
-                percentage={displayData.waterPercentage} 
-                color="sky"
-                loading={loading}
-              />
-            </div>
-
-            {/* Right Column - Water Level Indicator */}
-            <div className="col-span-1">
-              <WaterLevelIndicator 
-                waterLiters={displayData.waterLevel} 
-                waterPercentage={displayData.waterPercentage}
-                loading={loading} 
-              />
-            </div>
-          </div>
-
-          {/* Recent Readings Table */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">Recent Readings</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-3 px-4 text-slate-500 font-semibold">Time</th>
-                    <th className="text-left py-3 px-4 text-slate-500 font-semibold">Distance (cm)</th>
-                    <th className="text-left py-3 px-4 text-slate-500 font-semibold">Temperature (°C)</th>
-                    <th className="text-left py-3 px-4 text-slate-500 font-semibold">Water Level (%)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sensorHistory.slice(0, 10).map((reading, index) => (
-                    <tr key={index} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-3 px-4 text-slate-700">{new Date(reading.timestamp).toLocaleTimeString()}</td>
-                      <td className="py-3 px-4 text-slate-700">{reading.distance?.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-slate-700">{reading.temperature?.toFixed(1)}</td>
-                      <td className="py-3 px-4 text-slate-700">{reading.water_percentage?.toFixed(1)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* System Status Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-4">Model Status</h3>
-              {modelInfo ? (
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                    <span className="text-slate-500 text-sm uppercase font-semibold">Type:</span>
-                    <span className="text-slate-900 font-bold">{modelInfo.model_type}</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                    <span className="text-slate-500 text-sm uppercase font-semibold">Version:</span>
-                    <span className="text-slate-900 font-bold">{modelInfo.version}</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                    <span className="text-slate-500 text-sm uppercase font-semibold">Accuracy:</span>
-                    <span className="text-blue-600 font-bold">{(modelInfo.accuracy * 100).toFixed(1)}%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-sm uppercase font-semibold">Predictions:</span>
-                    <span className="text-slate-900 font-bold">{modelInfo.total_predictions}</span>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-slate-500">Loading model information...</p>
-              )}
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-4">System Status</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 p-2 bg-green-50 rounded border border-green-200 text-green-700 text-sm font-semibold">
-                  <FaCheckCircle /> Database: Connected
-                </div>
-                <div className="flex items-center gap-2 p-2 bg-green-50 rounded border border-green-200 text-green-700 text-sm font-semibold">
-                  <FaCheckCircle /> API Server: Running
-                </div>
-                <div className="flex items-center gap-2 p-2 bg-green-50 rounded border border-green-200 text-green-700 text-sm font-semibold">
-                  <FaCheckCircle /> ML Model: Loaded
-                </div>
-                <div className="flex items-center gap-2 p-2 bg-green-50 rounded border border-green-200 text-green-700 text-sm font-semibold">
-                  <FaCheckCircle /> Sensors: Connected
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        
+        @media (max-width: 768px) {
+          div[style*="grid-template-columns: 1fr 320px"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

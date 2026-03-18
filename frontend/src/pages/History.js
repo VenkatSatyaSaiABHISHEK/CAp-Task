@@ -1,196 +1,161 @@
-import React, { useState, useEffect } from 'react';
-import { FaChartLine, FaClock } from 'react-icons/fa';
-import { apiEndpoints } from '../utils/api';
-import '../styles/History.css';
-import config from '../config';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Menu, Moon, Sun, Clock } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
-const History = () => {
-  const [predictions, setPredictions] = useState([]);
-  const [sensorHistory, setSensorHistory] = useState([]);
-  const [filter, setFilter] = useState('all');
-  const [loading, setLoading] = useState(true);
+const History = ({ onMenuClick }) => {
+  const { colors, theme, toggleTheme } = useTheme();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [predRes, sensorRes] = await Promise.all([
-        apiEndpoints.getPredictionsHistory(200),
-        apiEndpoints.getSensorHistory(200)
-      ]);
-      setPredictions(predRes.data.data || []);
-      setSensorHistory(sensorRes.data.data || []);
-    } catch (err) {
-      console.error('Error fetching history:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredPredictions = filter === 'all' 
-    ? predictions 
-    : predictions.filter(p => p.prediction === filter);
-
-  const getPredictionStats = () => {
-    const stats = {};
-    config.PREDICTION_CLASSES.forEach(cls => {
-      stats[cls] = predictions.filter(p => p.prediction === cls).length;
-    });
-    return stats;
-  };
+  const historyData = [
+    { id: 1, time: '10:45 AM', level: '85%', temp: '28°C', event: 'Tank refilled' },
+    { id: 2, time: '10:30 AM', level: '65%', temp: '27°C', event: 'Normal operation' },
+    { id: 3, time: '10:15 AM', level: '55%', temp: '27°C', event: 'Water usage detected' },
+    { id: 4, time: '10:00 AM', level: '72%', temp: '26°C', event: 'System check passed' },
+    { id: 5, time: '09:45 AM', level: '75%', temp: '26°C', event: 'Normal operation' },
+  ];
 
   return (
-    <div className="history-page">
-      <div className="page-header">
-        <h1><FaChartLine /> Prediction & Sensor History</h1>
-        <p>View historical data and predictions</p>
-        <button className="refresh-button" onClick={fetchData}>
-          <FaClock /> Refresh Data
+    <div style={{ display: 'flex', height: '100vh', flexDirection: 'column', backgroundColor: colors.bg }}>
+      {/* Top Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 20px',
+          borderBottom: `1px solid ${colors.border}`,
+          backgroundColor: colors.card,
+          height: '50px',
+        }}
+      >
+        <button
+          onClick={onMenuClick}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: colors.text,
+            padding: '4px',
+            display: 'none',
+            '@media (max-width: 768px)': {
+              display: 'flex',
+            },
+          }}
+        >
+          <Menu size={20} />
+        </button>
+        <h1 style={{ fontSize: '15px', fontWeight: '600', color: colors.text, margin: 0, flex: 1 }}>
+          History
+        </h1>
+        <button
+          onClick={toggleTheme}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px 8px',
+            color: colors.textSecondary,
+            transition: 'color 0.2s ease',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = colors.text}
+          onMouseLeave={(e) => e.currentTarget.style.color = colors.textSecondary}
+        >
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
         </button>
       </div>
 
-      {loading ? (
-        <div className="loading-spinner">Loading history...</div>
-      ) : (
-        <div className="history-container">
-          {/* Stats Row */}
-          <div className="history-stats">
-            <div className="stat-item">
-              <span className="stat-label">Total Predictions</span>
-              <span className="stat-value">{predictions.length}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Sensor Readings</span>
-              <span className="stat-value">{sensorHistory.length}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Avg Confidence</span>
-              <span className="stat-value">
-                {(predictions.reduce((sum, p) => sum + p.confidence, 0) / predictions.length * 100).toFixed(1)}%
-              </span>
-            </div>
-          </div>
+      {/* Main Content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+          {/* Title */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{ marginBottom: '32px' }}
+          >
+            <h2 style={{ fontSize: '28px', fontWeight: '700', color: colors.text, margin: '0 0 8px 0' }}>
+              Event History
+            </h2>
+            <p style={{ fontSize: '14px', color: colors.textSecondary, margin: 0 }}>
+              Recent system events and activity log
+            </p>
+          </motion.div>
 
-          {/* Prediction Activity Distribution */}
-          <div className="distribution-section">
-            <h2>Prediction Distribution</h2>
-            <div className="distribution-bars">
-              {Object.entries(getPredictionStats()).map(([activity, count]) => (
-                <div key={activity} className="distribution-bar">
-                  <div className="bar-label">{activity}</div>
-                  <div className="bar-container">
-                    <div
-                      className="bar"
-                      style={{
-                        width: `${(count / predictions.length) * 100}%`,
-                        backgroundColor: [
-                          config.THEME.primary,
-                          config.THEME.secondary,
-                          config.THEME.accent,
-                          config.THEME.success,
-                          config.THEME.info
-                        ][config.PREDICTION_CLASSES.indexOf(activity)]
-                      }}
-                    >
-                      <span className="count">{count}</span>
+          {/* History Events */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: '12px',
+              border: `1px solid ${colors.border}`,
+              boxShadow: `0 1px 3px ${colors.shadow}`,
+              overflow: 'hidden',
+            }}
+          >
+            {historyData.map((item, idx) => (
+              <div
+                key={item.id}
+                style={{
+                  padding: '16px',
+                  borderBottom: idx !== historyData.length - 1 ? `1px solid ${colors.border}` : 'none',
+                  transition: 'background-color 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme === 'light' ? '#f9f9f9' : '#1f1f1f'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <Clock size={16} color={colors.textSecondary} style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '13px', fontWeight: '600', color: colors.text, margin: '0 0 4px 0' }}>
+                      {item.event}
+                    </p>
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: colors.textSecondary }}>
+                      <span>{item.time}</span>
+                      <span>•</span>
+                      <span>{item.level}</span>
+                      <span>•</span>
+                      <span>{item.temp}</span>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Filter & Tables */}
-          <div className="history-content">
-            {/* Predictions Table */}
-            <div className="table-section">
-              <div className="section-header">
-                <h2>Prediction Records</h2>
-                <select 
-                  value={filter} 
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="all">All Activities</option>
-                  {config.PREDICTION_CLASSES.map(cls => (
-                    <option key={cls} value={cls}>{cls}</option>
-                  ))}
-                </select>
               </div>
+            ))}
+          </motion.div>
 
-              <table className="history-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Prediction</th>
-                    <th>Confidence</th>
-                    <th>Distance</th>
-                    <th>Temperature</th>
-                    <th>Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPredictions.slice(0, 50).map((pred, index) => (
-                    <tr key={index}>
-                      <td>{index + 1}</td>
-                      <td>
-                        <span className="prediction-badge">
-                          {pred.prediction}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="confidence-bar">
-                          <div
-                            className="confidence-fill"
-                            style={{width: `${pred.confidence * 100}%`}}
-                          ></div>
-                          <span className="confidence-text">
-                            {(pred.confidence * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                      </td>
-                      <td>{pred.distance?.toFixed(2)} cm</td>
-                      <td>{pred.temperature?.toFixed(1)}°C</td>
-                      <td>{new Date(pred.created_at).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Sensor History Table */}
-            <div className="table-section">
-              <h2>Sensor Readings ({sensorHistory.length})</h2>
-              <table className="history-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Distance</th>
-                    <th>Temperature</th>
-                    <th>Water %</th>
-                    <th>Volume</th>
-                    <th>Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sensorHistory.slice(0, 50).map((reading, index) => (
-                    <tr key={index}>
-                      <td>{index + 1}</td>
-                      <td>{reading.distance?.toFixed(2)} cm</td>
-                      <td>{reading.temperature?.toFixed(1)}°C</td>
-                      <td>{reading.water_percentage?.toFixed(1)}%</td>
-                      <td>{reading.water_liters?.toFixed(2)} L</td>
-                      <td>{new Date(reading.timestamp).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Load More */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            style={{ textAlign: 'center', marginTop: '24px' }}
+          >
+            <button
+              style={{
+                backgroundColor: colors.card,
+                border: `1px solid ${colors.border}`,
+                borderRadius: '8px',
+                padding: '10px 16px',
+                fontSize: '13px',
+                fontWeight: '600',
+                color: colors.text,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f9f9f9' : '#1f1f1f';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = colors.card;
+              }}
+            >
+              Load More Events
+            </button>
+          </motion.div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

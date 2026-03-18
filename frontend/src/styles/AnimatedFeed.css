@@ -1,0 +1,219 @@
+/* Animated Notification Feed */
+.notification-feed-container {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+  max-height: 600px;
+  position: relative;
+  overflow: hidden;
+}
+
+.notification-feed-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
+  pointer-events: none;
+}
+
+[data-theme='night'] .notification-feed-container {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+.feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 2;
+}
+
+[data-theme='night'] .feed-header {
+  border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #10b981;
+}
+
+[data-theme='night'] .live-indicator {
+  color: #6ee7b7;
+}
+
+.live-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.messages-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  scroll-behavior: smooth;
+  position: relative;
+  z-index: 2;
+  padding-right: 4px;
+}
+
+/* Custom Scrollbar */
+.messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='night'] .messages-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='night'] .messages-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.message-bubble {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+[data-theme='night'] .message-bubble {
+  background: rgba(30, 41, 59, 0.4);
+}
+
+.message-bubble:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme='night'] .message-bubble:hover {
+  background: rgba(30, 41, 59, 0.6);
+}
+
+.message-bubble.message-success {
+  border-left: 3px solid #10b981;
+}
+
+.message-bubble.message-warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.message-bubble.message-error {
+  border-left: 3px solid #ef4444;
+}
+
+.message-bubble.message-info {
+  border-left: 3px solid #3b82f6;
+}
+
+.message-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.message-text {
+  margin: 0;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+[data-theme='night'] .message-text {
+  color: #e2e8f0;
+}
+
+.message-time {
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+[data-theme='night'] .message-time {
+  color: #78909c;
+}
+
+.empty-feed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #9ca3af;
+  text-align: center;
+  padding: 32px 16px;
+  min-height: 150px;
+}
+
+[data-theme='night'] .empty-feed {
+  color: #78909c;
+}
+
+.empty-feed svg {
+  opacity: 0.3;
+}
+
+.empty-feed p {
+  font-size: 12px;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .notification-feed-container {
+    max-height: 400px;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .notification-feed-container {
+    max-height: 300px;
+    padding: 16px;
+  }
+}
