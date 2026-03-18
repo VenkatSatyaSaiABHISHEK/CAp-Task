@@ -138,9 +138,13 @@ def load_ml_model():
         
         # Try multiple possible paths (prioritize local directory)
         possible_paths = [
+            os.path.join(current_dir, "model23.h5"),
             os.path.join(current_dir, "best_model.h5"),
+            os.path.join(os.path.dirname(current_dir), "model23.h5"),
             os.path.join(os.path.dirname(current_dir), "best_model.h5"),
+            "model23.h5",
             "best_model.h5",
+            "/opt/render/project/src/backend/model23.h5",
             "/opt/render/project/src/backend/best_model.h5"
         ]
         
@@ -229,26 +233,52 @@ def load_model_with_h5_conversion(model_path):
         
         print("[INFO] Extracting model architecture AND weights from h5 file...")
         
+        def extract_weights_recursive(group, layer_name, found_datasets=None):
+            """Recursively find all datasets in nested h5 group structure"""
+            if found_datasets is None:
+                found_datasets = []
+            
+            for key, item in sorted(group.items()):
+                if isinstance(item, h5py.Dataset):
+                    weight_array = np.array(item)
+                    found_datasets.append((key, weight_array))
+                elif isinstance(item, h5py.Group):
+                    # Recursively dive into nested groups
+                    extract_weights_recursive(item, f"{layer_name}/{key}", found_datasets)
+            
+            return found_datasets
+        
         with h5py.File(model_path, 'r') as f:
             # Extract all layer weights properly
             layer_weights = {}
             if 'model_weights' in f:
                 for layer_name in f['model_weights'].keys():
                     if layer_name != 'top_level_model_weights':
-                        weights_list = []
                         layer_group = f[f'model_weights/{layer_name}']
                         
-                        # Get all weight arrays from this layer (skip string attributes)
-                        for key in sorted(layer_group.keys()):
-                            item = layer_group[key]
-                            # Only process actual datasets, not string metadata
-                            if isinstance(item, h5py.Dataset):
-                                weight_array = np.array(item)
-                                weights_list.append(weight_array)
-                                print(f"    {layer_name}/{key}: shape {weight_array.shape}")
+                        # Recursively extract all datasets from nested groups with keys
+                        weight_tuples = extract_weights_recursive(layer_group, layer_name)
                         
-                        if weights_list:  # Only add if we found actual weights
-                            layer_weights[layer_name] = weights_list
+                        if weight_tuples:  # Only add if we found actual weights
+                            # Sort weights in the correct order for Keras layers
+                            # For Dense: kernel, bias
+                            # For GRU cells: kernel, recurrent_kernel, bias
+                            sorted_weights = []
+                            weight_dict = {k: w for k, w in weight_tuples}
+                            
+                            # Determine correct ordering
+                            if 'kernel' in weight_dict:
+                                sorted_weights.append(weight_dict['kernel'])
+                            if 'recurrent_kernel' in weight_dict:
+                                sorted_weights.append(weight_dict['recurrent_kernel'])
+                            if 'bias' in weight_dict:
+                                sorted_weights.append(weight_dict['bias'])
+                            
+                            if sorted_weights:
+                                layer_weights[layer_name] = sorted_weights
+                                print(f"[OK] {layer_name}: extracted {len(sorted_weights)} weights")
+                                for idx, w in enumerate(sorted_weights):
+                                    print(f"    [{idx}] shape {w.shape}")
             
             print(f"[OK] Extracted {len(layer_weights)} layers with weights")
             
@@ -276,7 +306,7 @@ def load_model_with_h5_conversion(model_path):
                     dense_units = dense_shape[1]
                     print(f"[INFO] Dense units detected: {dense_units}")
             
-            print(f"[INFO] Building Keras 2.x model: GRU({gru_units}) → GRU({gru1_units}) → Dense({dense_units})")
+            print(f"[INFO] Building Keras 2.x model: GRU({gru_units}) -> GRU({gru1_units}) -> Dense({dense_units})")
             
             # Build model with correct units
             model = Sequential([
@@ -321,10 +351,10 @@ def load_model_with_h5_conversion(model_path):
                         print(f"  [WARNING] {layer_name}: {str(e)[:100]}")
             
             if weights_applied > 0:
-                print(f"[OK] ✅ Successfully applied weights to {weights_applied}/{len(layer_weights)} layers!")
+                print(f"[OK] Successfully applied weights to {weights_applied}/{len(layer_weights)} layers!")
                 print(f"[INFO] Model is now using TRAINED weights!")
             else:
-                print(f"[WARNING] ⚠️ No weights could be applied. Model will use RANDOM initialization.")
+                print(f"[WARNING] No weights could be applied. Model will use RANDOM initialization.")
             
             return model
         
