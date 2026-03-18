@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, History, Settings, Home, X, FileText } from 'lucide-react';
+import { BarChart3, History, Settings, Home, X, FileText, Brain } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -10,6 +10,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { icon: Home, label: 'Dashboard', path: '/' },
     { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+    { icon: Brain, label: 'Prediction', path: '/prediction' },
     { icon: History, label: 'History', path: '/history' },
     { icon: FileText, label: 'Reports', path: '/reports' },
     { icon: Settings, label: 'Settings', path: '/settings' },
@@ -39,17 +40,53 @@ const Sidebar = ({ isOpen, onClose }) => {
         }}
       >
 
-        {/* Navigation Items */}
-        <nav
+        {/* Header */}
+      <div
+        style={{
+          padding: '16px 12px',
+          borderBottom: `1px solid ${sidebarBorder}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+        }}
+      >
+        <p
           style={{
-            flex: 1,
-            padding: '6px 4px',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '2px',
+            fontSize: '14px',
+            fontWeight: '700',
+            color: colors.textSecondary,
+            margin: 0,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            minWidth: 'fit-content',
           }}
         >
+          KIET
+        </p>
+        <h2
+          style={{
+            fontSize: '14px',
+            fontWeight: '700',
+            color: colors.text,
+            margin: 0,
+            letterSpacing: '-0.5px',
+          }}
+        >
+          Dashboard
+        </h2>
+      </div>
+
+      {/* Navigation Items */}
+      <nav
+        style={{
+          flex: 1,
+          padding: '6px 4px',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2px',
+        }}
+      >
           {navItems.map((item) => {
             const active = isActive(item.path);
             const Icon = item.icon;

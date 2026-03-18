@@ -46,17 +46,20 @@ const Header = ({ onMenuClick, isConnected }) => {
         >
           <Menu size={20} />
         </button>
-        <h1
-          style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: colors.text,
-            margin: 0,
-            letterSpacing: '-0.5px',
-          }}
-        >
-          Dashboard
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ fontSize: '14px', fontWeight: '700', color: colors.textSecondary, letterSpacing: '0.5px', textTransform: 'uppercase' }}>KIET</span>
+          <h1
+            style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: colors.text,
+              margin: 0,
+              letterSpacing: '-0.5px',
+            }}
+          >
+            Dashboard
+          </h1>
+        </div>
       </div>
 
       {/* Right Side */}

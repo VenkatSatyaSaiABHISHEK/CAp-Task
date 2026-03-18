@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Analytics from './pages/Analytics';
 import History from './pages/History';
 import Settings from './pages/Settings';
+import Prediction from './pages/Prediction';
 import { useTheme } from './context/ThemeContext';
 import './styles/App.css';
 
@@ -53,6 +54,10 @@ function AppContent() {
             <Route
               path="/analytics"
               element={<Analytics onMenuClick={() => setSidebarOpen(!sidebarOpen)} />}
+            />
+            <Route
+              path="/prediction"
+              element={<Prediction onMenuClick={() => setSidebarOpen(!sidebarOpen)} />}
             />
             <Route
               path="/history"
