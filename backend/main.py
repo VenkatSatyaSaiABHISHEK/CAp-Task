@@ -17,6 +17,75 @@ load_dotenv()
 # This prevents import errors from stopping the entire server startup
 ml_model = None
 TENSORFLOW_AVAILABLE = False
+data_scaler = None
+
+# Feature ranges for MinMaxScaler (from typical sensor values)
+# These ranges normalize the input features to [0, 1]
+FEATURE_RANGES = {
+    'distance': (5, 50),          # cm
+    'temperature': (15, 40),      # °C
+    'water_percent': (0, 100),    # %
+    'minute': (0, 59),            # 0-59 minutes
+    'hour': (0, 23)               # 0-23 hours
+}
+
+def create_data_scaler():
+    """
+    Create a MinMaxScaler with fitted ranges from training data
+    This is the same scaling used during model training
+    """
+    global data_scaler
+    try:
+        from sklearn.preprocessing import MinMaxScaler
+        
+        # Create feature matrix with known ranges
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        
+        # Fit scaler on the full range of possible values
+        fit_data = np.array([
+            [FEATURE_RANGES['distance'][0], FEATURE_RANGES['temperature'][0], 
+             FEATURE_RANGES['water_percent'][0], FEATURE_RANGES['minute'][0], 
+             FEATURE_RANGES['hour'][0]],
+            [FEATURE_RANGES['distance'][1], FEATURE_RANGES['temperature'][1], 
+             FEATURE_RANGES['water_percent'][1], FEATURE_RANGES['minute'][1], 
+             FEATURE_RANGES['hour'][1]]
+        ])
+        
+        scaler.fit(fit_data)
+        data_scaler = scaler
+        print("[OK] Data scaler initialized with feature ranges:")
+        for feature, (min_val, max_val) in FEATURE_RANGES.items():
+            print(f"     {feature}: [{min_val}, {max_val}]")
+        return scaler
+    except Exception as e:
+        print(f"[ERROR] Failed to create scaler: {e}")
+        return None
+
+def preprocess_prediction_input(distance, temperature, water_percent, minute, hour):
+    """
+    Preprocess input data using the same scaling as training
+    Returns normalized data ready for model prediction
+    """
+    global data_scaler
+    
+    if data_scaler is None:
+        data_scaler = create_data_scaler()
+    
+    if data_scaler is None:
+        print("[WARNING] Scaler not available, using raw input")
+        return np.array([[distance, temperature, water_percent, minute, hour]])
+    
+    try:
+        # Create input array
+        raw_input = np.array([[distance, temperature, water_percent, minute, hour]])
+        
+        # Scale using the fitted scaler
+        scaled_input = data_scaler.transform(raw_input)
+        
+        return scaled_input
+    except Exception as e:
+        print(f"[ERROR] Preprocessing failed: {e}")
+        return np.array([[distance, temperature, water_percent, minute, hour]])
 
 def try_load_tensorflow():
     """Lazy load TensorFlow/Keras - only called when actually needed"""
@@ -45,162 +114,12 @@ def try_load_tensorflow():
             TENSORFLOW_AVAILABLE = False
             return None
 
-def rebuild_model_from_weights(model_path):
-    """
-    Extract model architecture and weights from Keras 3.x h5 file
-    """
-    try:
-        import h5py
-        import json
-        import numpy as np
-        print("[INFO] Reading model architecture from h5 file...")
-        
-        with h5py.File(model_path, 'r') as f:
-            # Try to get model config
-            model_config = None
-            if 'model_config' in f.attrs:
-                try:
-                    config_str = f.attrs['model_config']
-                    if isinstance(config_str, bytes):
-                        config_str = config_str.decode('utf-8')
-                    model_config = json.loads(config_str)
-                    print("[INFO] Found model config in attributes")
-                    print(f"[DEBUG] Config: {json.dumps(model_config, indent=2)[:500]}...")
-                except Exception as e:
-                    print(f"[WARNING] Could not parse model config: {e}")
-            
-            # Extract weights
-            weights_dict = {}
-            
-            # Helper to recursively find weight datasets
-            def get_weight_arrays(group_path):
-                """Get all weight arrays from a group, handling nested structure"""
-                arrays = []
-                if isinstance(f[group_path], h5py.Dataset):
-                    return [np.array(f[group_path])]
-                
-                for key in f[group_path].keys():
-                    item_path = f"{group_path}/{key}"
-                    if isinstance(f[item_path], h5py.Dataset):
-                        arrays.append(np.array(f[item_path]))
-                    elif isinstance(f[item_path], h5py.Group):
-                        arrays.extend(get_weight_arrays(item_path))
-                return arrays
-            
-            # Extract all layer weights
-            print("[INFO] Extracting all layer weights...")
-            if 'model_weights' in f:
-                for layer_name in f['model_weights'].keys():
-                    if layer_name != 'top_level_model_weights':
-                        weights_dict[layer_name] = get_weight_arrays(f'model_weights/{layer_name}')
-                        print(f"  [OK] {layer_name}: {len(weights_dict[layer_name])} arrays")
-                        for i, w in enumerate(weights_dict[layer_name]):
-                            print(f"       [{i}] {w.shape}")
-            
-            return {'config': model_config, 'weights': weights_dict}
-        
-    except Exception as e:
-        print(f"[ERROR] Model reading failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-def load_model_with_fallback_weights(model_path):
-    """
-    Rebuild the model based on actual architecture from the h5 file
-    """
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import GRU, Dense, Dropout
-    
-    try:
-        result = rebuild_model_from_weights(model_path)
-        if not result or not result.get('weights'):
-            print("[WARNING] No weights extracted")
-            return None
-        
-        weights_dict = result['weights']
-        
-        # Infer architecture from weight shapes
-        print("[INFO] Inferring model architecture from weight shapes...")
-        
-        # GRU weight: (input_size, 3*units)
-        # Recurrent: (units, 3*units)
-        # Bias: (3*units,) or (2, 3*units)
-        
-        gru_units = None
-        gru1_units = None
-        dense4_units = None
-        dense5_units = None
-        
-        if 'gru' in weights_dict and weights_dict['gru']:
-            # Find the recurrent kernel to get units (recurrent is shape (units, 3*units))
-            for w in weights_dict['gru']:
-                if len(w.shape) == 2 and w.shape[0] == w.shape[1] / 3:
-                    gru_units = w.shape[0]
-                    break
-            if not gru_units and len(weights_dict['gru'][0].shape) == 2:
-                # Alternative: recurrent dim is first in recurrent_kernel
-                gru_units = weights_dict['gru'][1].shape[0] if len(weights_dict['gru']) > 1 else 128
-        
-        if 'gru_1' in weights_dict and weights_dict['gru_1']:
-            for w in weights_dict['gru_1']:
-                if len(w.shape) == 2 and w.shape[0] == w.shape[1] / 3:
-                    gru1_units = w.shape[0]
-                    break
-            if not gru1_units:
-                gru1_units = weights_dict['gru_1'][1].shape[0] if len(weights_dict['gru_1']) > 1 else 64
-        
-        if 'dense_4' in weights_dict and weights_dict['dense_4']:
-            # Dense kernel: (input_size, output_size)
-            for w in weights_dict['dense_4']:
-                if len(w.shape) == 2:
-                    dense4_units = w.shape[1]
-                    break
-            if not dense4_units:
-                dense4_units = weights_dict['dense_4'][1].shape[1] if len(weights_dict['dense_4']) > 1 else 16
-        
-        if 'dense_5' in weights_dict and weights_dict['dense_5']:
-            for w in weights_dict['dense_5']:
-                if len(w.shape) == 2:
-                    dense5_units = w.shape[1]
-                    break
-            if not dense5_units:
-                dense5_units = weights_dict['dense_5'][1].shape[1] if len(weights_dict['dense_5']) > 1 else 1
-        
-        print(f"[INFO] Inferred architecture:")
-        print(f"      GRU units: {gru_units}")
-        print(f"      GRU_1 units: {gru1_units}")
-        print(f"      Dense_4 units: {dense4_units}")
-        print(f"      Dense_5 units: {dense5_units}")
-        
-        # Build model with inferred architecture
-        print("[INFO] Building model...")
-        model = Sequential([
-            GRU(gru_units or 128, return_sequences=True, input_shape=(1, 5), name='gru'),
-            GRU(gru1_units or 64, name='gru_1'),
-            Dropout(0.2, name='dropout'),
-            Dense(dense4_units or 16, activation='relu', name='dense_4'),
-            Dense(dense5_units or 1, activation='sigmoid', name='dense_5')
-        ])
-        
-        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-        print("[OK] Model architecture created successfully!")
-        print("[INFO] Note: Model weights are not loaded due to format incompatibility.")
-        print("[INFO] Using model structure for inference (weights will be random)")
-        
-        return model
-        
-    except Exception as e:
-        print(f"[ERROR] Model rebuilding failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
 def load_ml_model():
     """
     Lazy load the ML model - only attempts to load once
+    Uses the trained best_model.h5 file with proper data preprocessing
     """
-    global ml_model, TENSORFLOW_AVAILABLE
+    global ml_model, TENSORFLOW_AVAILABLE, data_scaler
     
     if ml_model is not None:
         return ml_model  # Already loaded
@@ -211,7 +130,7 @@ def load_ml_model():
     
     load_model_fn = try_load_tensorflow()
     if not load_model_fn:
-        print("[INFO] Skipping model loading - TensorFlow not available")
+        print("[WARNING] TensorFlow not available")
         return None
     
     try:
@@ -221,7 +140,6 @@ def load_ml_model():
         # Try multiple possible paths (prioritize local directory)
         possible_paths = [
             os.path.join(current_dir, "best_model.h5"),
-            os.path.join(current_dir, "saved_models", "best_model.h5"),
             os.path.join(os.path.dirname(current_dir), "best_model.h5"),
             "best_model.h5",
             "/opt/render/project/src/backend/best_model.h5"
@@ -234,51 +152,39 @@ def load_ml_model():
                 print(f"[INFO] Found model at: {path}")
                 break
         
-        if model_path:
-            try:
-                # Try with safe_mode=False first
-                try:
-                    ml_model = load_model_fn(model_path, safe_mode=False)
-                    print(f"[OK] ML model loaded successfully (safe_mode=False) from {model_path}")
-                    TENSORFLOW_AVAILABLE = True
-                    print("="*60 + "\n")
-                    return ml_model
-                except TypeError:
-                    # Try without safe_mode parameter
-                    ml_model = load_model_fn(model_path)
-                    print(f"[OK] ML model loaded successfully from {model_path}")
-                    TENSORFLOW_AVAILABLE = True
-                    print("="*60 + "\n")
-                    return ml_model
-            except Exception as e:
-                print(f"[WARNING] Direct loading failed: {e}")
-                print(f"[INFO] Attempting to extract weights and rebuild model...")
-                
-                # Try extracting weights and rebuilding
-                ml_model = load_model_with_fallback_weights(model_path)
-                if ml_model is not None:
-                    print(f"[OK] Model successfully rebuilt with extracted weights")
-                    TENSORFLOW_AVAILABLE = True
-                    print("="*60 + "\n")
-                    return ml_model
-                
-                print(f"[ERROR] Model loading and weight extraction both failed:")
-                print(f"  Error type: {type(e).__name__}")
-                print(f"  Error message: {e}")
-                import traceback
-                traceback.print_exc()
-                print("[INFO] Will use fallback predictions")
-                print("="*60 + "\n")
-                return None
-        else:
-            print(f"[WARNING] Model not found. Checked paths:")
+        if not model_path:
+            print(f"[WARNING] Model not found in any of these paths:")
             for p in possible_paths:
-                exists = "EXISTS" if os.path.exists(p) else "NOT FOUND"
-                print(f"  - {p} [{exists}]")
-            print("[INFO] Will use fallback predictions")
+                print(f"  - {p}")
+            print("="*60 + "\n")
             return None
-            
+        
+        # Load the model directly
+        try:
+            ml_model = load_model_fn(model_path, safe_mode=False)
+            print(f"[OK] ML model loaded successfully!")
+            print(f"[INFO] Model summary:")
+            ml_model.summary()
+            TENSORFLOW_AVAILABLE = True
+        except TypeError:
+            # Try without safe_mode if the parameter is not supported
+            ml_model = load_model_fn(model_path)
+            print(f"[OK] ML model loaded successfully (safe_mode not supported)!")
+            TENSORFLOW_AVAILABLE = True
+        
+        # Initialize the data scaler for preprocessing
+        if data_scaler is None:
+            data_scaler = create_data_scaler()
+        
+        print("="*60 + "\n")
+        return ml_model
+        
     except Exception as e:
+        print(f"[ERROR] Model loading failed: {e}")
+        import traceback
+        traceback.print_exc()
+        print("="*60 + "\n")
+        return None
         print(f"[WARNING] Error during model loading: {e}")
         print("[INFO] Will use fallback predictions")
         return None
@@ -689,14 +595,20 @@ async def predict_water(request: PredictionRequest):
         return {"status": "error", "message": "ML model not loaded"}
     
     try:
-        # Prepare input data [distance, temperature, water_percent, minute, hour]
-        x = np.array([[request.distance, request.temperature, request.water_percent, request.minute, request.hour]])
+        # Preprocess input data using MinMaxScaler (same as training)
+        x_scaled = preprocess_prediction_input(
+            distance=request.distance,
+            temperature=request.temperature,
+            water_percent=request.water_percent,
+            minute=request.minute,
+            hour=request.hour
+        )
         
-        # Reshape to model input shape (1, 1, 5)
-        x = x.reshape((1, 1, 5))
+        # Reshape to model input shape (samples, timesteps=1, features=5)
+        x_model = x_scaled.reshape((1, 1, 5))
         
         # Make prediction
-        prediction = model.predict(x, verbose=0)
+        prediction = model.predict(x_model, verbose=0)
         predicted_water_percent = float(prediction[0][0])
         
         # Store in database
