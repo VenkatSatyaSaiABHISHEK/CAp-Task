@@ -22,17 +22,25 @@ def try_load_tensorflow():
     """Lazy load TensorFlow/Keras - only called when actually needed"""
     global TENSORFLOW_AVAILABLE
     try:
+        # Suppress TensorFlow warnings
+        import os
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+        
         from tensorflow.keras.models import load_model
         TENSORFLOW_AVAILABLE = True
         return load_model
     except Exception as tf_error:
         print(f"[WARNING] TensorFlow import failed: {tf_error}")
+        import traceback
+        traceback.print_exc()
         try:
             from keras.models import load_model
             TENSORFLOW_AVAILABLE = True
             return load_model
         except Exception as keras_error:
             print(f"[WARNING] Keras import also failed: {keras_error}")
+            import traceback
+            traceback.print_exc()
             print("[INFO] Will run without ML model support")
             TENSORFLOW_AVAILABLE = False
             return None
@@ -46,7 +54,9 @@ def load_ml_model():
     if ml_model is not None:
         return ml_model  # Already loaded
     
+    print("\n" + "="*60)
     print("Loading ML model...")
+    print("="*60)
     
     load_model_fn = try_load_tensorflow()
     if not load_model_fn:
@@ -75,24 +85,34 @@ def load_ml_model():
         
         if model_path:
             try:
-                ml_model = load_model_fn(model_path, safe_mode=False)
-                print(f"[OK] ML model loaded successfully from {model_path}")
-                TENSORFLOW_AVAILABLE = True
-                return ml_model
-            except TypeError:
+                # Try with safe_mode=False first
                 try:
+                    ml_model = load_model_fn(model_path, safe_mode=False)
+                    print(f"[OK] ML model loaded successfully (safe_mode=False) from {model_path}")
+                    TENSORFLOW_AVAILABLE = True
+                    print("="*60 + "\n")
+                    return ml_model
+                except TypeError:
+                    # Try without safe_mode parameter
                     ml_model = load_model_fn(model_path)
                     print(f"[OK] ML model loaded successfully from {model_path}")
                     TENSORFLOW_AVAILABLE = True
+                    print("="*60 + "\n")
                     return ml_model
-                except Exception as e:
-                    print(f"[WARNING] Model loading failed: {e}")
-                    print("[INFO] Will use fallback predictions")
-                    return None
+            except Exception as e:
+                print(f"[ERROR] Model loading failed with detailed info:")
+                print(f"  Error type: {type(e).__name__}")
+                print(f"  Error message: {e}")
+                import traceback
+                traceback.print_exc()
+                print("[INFO] Will use fallback predictions")
+                print("="*60 + "\n")
+                return None
         else:
             print(f"[WARNING] Model not found. Checked paths:")
             for p in possible_paths:
-                print(f"  - {p}")
+                exists = "EXISTS" if os.path.exists(p) else "NOT FOUND"
+                print(f"  - {p} [{exists}]")
             print("[INFO] Will use fallback predictions")
             return None
             
