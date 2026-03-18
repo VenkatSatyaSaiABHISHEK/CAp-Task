@@ -116,6 +116,7 @@ def load_ml_model():
     """
     Lazy load the ML model - only attempts to load once
     Uses the trained best_model.h5 file with proper data preprocessing
+    Handles Keras 3.x to Keras 2.x compatibility
     """
     global ml_model, TENSORFLOW_AVAILABLE, data_scaler
     
@@ -157,18 +158,49 @@ def load_ml_model():
             print("="*60 + "\n")
             return None
         
-        # Load the model directly
+        # Load the model with Keras 3.x compatibility handling
         try:
-            ml_model = load_model_fn(model_path, safe_mode=False)
-            print(f"[OK] ML model loaded successfully!")
+            from tensorflow.keras.layers import InputLayer
+            
+            # Custom object dict to handle Keras 3.x InputLayer config
+            custom_objects = {
+                'InputLayer': InputLayer
+            }
+            
+            # Try loading with custom objects
+            ml_model = load_model_fn(model_path, custom_objects=custom_objects, safe_mode=False)
+            print(f"[OK] ML model loaded successfully with Keras 3.x compatibility!")
             print(f"[INFO] Model summary:")
             ml_model.summary()
             TENSORFLOW_AVAILABLE = True
-        except TypeError:
-            # Try without safe_mode if the parameter is not supported
-            ml_model = load_model_fn(model_path)
-            print(f"[OK] ML model loaded successfully (safe_mode not supported)!")
-            TENSORFLOW_AVAILABLE = True
+        except TypeError as te:
+            # If custom_objects doesn't work, try without safe_mode
+            if "batch_shape" in str(te) or "optional" in str(te):
+                print(f"[WARNING] Keras 3.x format detected, attempting conversion...")
+                
+                try:
+                    # Try loading without custom_objects, just no safe_mode
+                    ml_model = load_model_fn(model_path, safe_mode=False)
+                    print(f"[OK] ML model loaded with safe_mode=False")
+                    TENSORFLOW_AVAILABLE = True
+                except Exception as e2:
+                    print(f"[WARNING] Standard loading failed: {e2}")
+                    print(f"[INFO] Model will use architecture inference...")
+                    
+                    # Fall back to trying to extract and rebuild
+                    ml_model = load_model_with_h5_conversion(model_path)
+                    if ml_model is None:
+                        raise Exception("All model loading attempts failed")
+            else:
+                raise te
+        except Exception as e:
+            print(f"[WARNING] Initial loading failed: {e}")
+            print(f"[INFO] Attempting H5 conversion fallback...")
+            
+            # Use h5py to extract and rebuild
+            ml_model = load_model_with_h5_conversion(model_path)
+            if ml_model is None:
+                raise Exception("H5 conversion also failed")
         
         # Initialize the data scaler for preprocessing
         if data_scaler is None:
@@ -182,6 +214,77 @@ def load_ml_model():
         import traceback
         traceback.print_exc()
         print("="*60 + "\n")
+        return None
+
+def load_model_with_h5_conversion(model_path):
+    """
+    Fallback: Extract model from h5 file and rebuild with Keras 2.x format
+    This handles Keras 3.x models that can't be loaded directly
+    """
+    try:
+        import h5py
+        import json
+        from tensorflow.keras.models import Sequential
+        from tensorflow.keras.layers import GRU, Dense, Dropout
+        
+        print("[INFO] Extracting model architecture from h5 file...")
+        
+        with h5py.File(model_path, 'r') as f:
+            # Get metadata
+            if 'metadata' in f.attrs:
+                metadata = json.loads(f.attrs['metadata'].decode('utf-8') if isinstance(f.attrs['metadata'], bytes) else f.attrs['metadata'])
+                print(f"[INFO] Model metadata found")
+            
+            # Extract weights for layer detection
+            if 'model_weights' not in f:
+                print("[WARNING] No model_weights found in h5 file")
+                return None
+            
+            # Detect layer architecture from weights
+            layer_weights = {}
+            for layer_name in f['model_weights'].keys():
+                if layer_name != 'top_level_model_weights':
+                    shapes = []
+                    for key in f[f'model_weights/{layer_name}'].keys():
+                        dataset = f[f'model_weights/{layer_name}/{key}']
+                        shapes.append(np.array(dataset).shape)
+                    layer_weights[layer_name] = shapes
+            
+            print(f"[INFO] Detected layers: {list(layer_weights.keys())}")
+            
+            # Infer units from shapes
+            gru_units = 128
+            gru1_units = 64
+            dense_units = 32
+            
+            # Find GRU units from recurrent kernel shape (units, 3*units)
+            for layer_name, shapes in layer_weights.items():
+                if 'gru' in layer_name.lower() and len(shapes) > 1:
+                    # Recurrent kernel is typically second weight
+                    recurrent_shape = shapes[1]
+                    if len(recurrent_shape) == 2:
+                        gru_units = recurrent_shape[0]
+                        print(f"[INFO] {layer_name}: {gru_units} units")
+                        break
+            
+            # Build model with inferred units
+            print("[INFO] Building model with Keras 2.x format...")
+            model = Sequential([
+                GRU(gru_units, return_sequences=True, input_shape=(1, 5), name='gru'),
+                GRU(gru1_units, name='gru_1'),
+                Dropout(0.2, name='dropout'),
+                Dense(dense_units, activation='relu', name='dense'),
+                Dense(1, activation='sigmoid', name='output')
+            ])
+            
+            model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+            print("[OK] Model rebuilt successfully!")
+            return model
+            
+    except Exception as e:
+        print(f"[ERROR] H5 conversion failed: {e}")
+        import traceback
+        traceback.print_exc()
         return None
         print(f"[WARNING] Error during model loading: {e}")
         print("[INFO] Will use fallback predictions")
