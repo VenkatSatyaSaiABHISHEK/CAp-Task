@@ -66,8 +66,8 @@ const Home = ({ onMenuClick, setIsConnected }) => {
     backgroundColor: colors.bg,
     minHeight: '100%',
     transition: 'background-color 0.3s ease',
-    padding: '32px 24px',
-    paddingTop: 'calc(56px + 32px)',
+    padding: '24px',
+    paddingTop: '24px',
   };
 
   const containerStyle = {

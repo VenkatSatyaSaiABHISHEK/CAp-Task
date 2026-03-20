@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
+import LoadingScreen from './components/LoadingScreen';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import AIAssistant from './components/AIAssistant';
@@ -17,37 +18,55 @@ function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { colors, theme } = useTheme();
   const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const bgColor = colors?.bg || '#ffffff';
 
+  // Simulate app initialization loading (2.5 seconds)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', backgroundColor: bgColor }}>
-      {/* Header */}
-      <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} isConnected={isConnected} />
+    <>
+      {/* Loading Screen */}
+      {isLoading && <LoadingScreen />}
 
-      {/* Main Layout */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Sidebar */}
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Main App */}
+      {!isLoading && (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', backgroundColor: bgColor }}>
+          {/* Header */}
+          <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} isConnected={isConnected} />
 
-        {/* Content Area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', backgroundColor: bgColor }}>
-            <Routes>
-              <Route path="/" element={<Home onMenuClick={() => setSidebarOpen(!sidebarOpen)} setIsConnected={setIsConnected} />} />
-              <Route path="/analytics" element={<Analytics onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
-              <Route path="/prediction" element={<Prediction onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
-              <Route path="/history" element={<History onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
-              <Route path="/reports" element={<Reports onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
-              <Route path="/settings" element={<Settings onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
-            </Routes>
+          {/* Main Layout */}
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            {/* Sidebar */}
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+            {/* Content Area */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', backgroundColor: bgColor }}>
+                <Routes>
+                  <Route path="/" element={<Home onMenuClick={() => setSidebarOpen(!sidebarOpen)} setIsConnected={setIsConnected} />} />
+                  <Route path="/analytics" element={<Analytics onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
+                  <Route path="/prediction" element={<Prediction onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
+                  <Route path="/history" element={<History onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
+                  <Route path="/reports" element={<Reports onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
+                  <Route path="/settings" element={<Settings onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
+                </Routes>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* AI Assistant */}
-      <AIAssistant theme={theme} />
-    </div>
+          {/* AI Assistant */}
+          <AIAssistant theme={theme} />
+        </div>
+      )}
+    </>
   );
 }
 
