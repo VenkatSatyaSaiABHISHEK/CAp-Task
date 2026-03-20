@@ -776,16 +776,30 @@ async def status():
 
 @app.get("/api/v1/sensor/latest")
 async def get_latest_data():
-    """Get latest sensor data from ThingSpeak and save to database"""
+    """Get latest sensor data from database (fast), update from ThingSpeak in background"""
     try:
-        # Get ThingSpeak client
-        thingspeak = get_thingspeak_client()
+        # FIRST: Return cached data from database immediately (fast response < 1s)
+        data = get_latest_sensor_data()
+        if data:
+            response = {
+                "status": "success",
+                "data": data,
+                "source": "Database Cache",
+                "message": "Returning latest cached data (instant response)"
+            }
+            
+            # BACKGROUND: Update from ThingSpeak without blocking response
+            # This happens in the background while user sees data
+            import asyncio
+            asyncio.create_task(update_thingspeak_in_background())
+            
+            return response
         
-        # Fetch latest data from ThingSpeak
+        # If no cache, fetch from ThingSpeak
+        thingspeak = get_thingspeak_client()
         ts_data = thingspeak.get_latest_data()
         
         if ts_data:
-            # Save to database
             insert_sensor_data(
                 distance=ts_data['distance'],
                 temperature=ts_data['temperature'],
@@ -799,34 +813,42 @@ async def get_latest_data():
                 "status": "success",
                 "data": ts_data,
                 "source": "ThingSpeak",
-                "message": "Data fetched from ThingSpeak and saved to database"
+                "message": "Data fetched from ThingSpeak (first load)"
             }
-        else:
-            # Fallback to database if ThingSpeak fails
-            data = get_latest_sensor_data()
-            if data:
-                return {
-                    "status": "success",
-                    "data": data,
-                    "source": "Database",
-                    "message": "ThingSpeak unavailable, returning cached data"
-                }
-            return {
-                "status": "error",
-                "message": "No sensor data available from ThingSpeak or database"
-            }
+        
+        return {
+            "status": "error",
+            "message": "No sensor data available"
+        }
     except Exception as e:
         print(f"Error fetching latest sensor data: {e}")
-        # Fallback to database
         data = get_latest_sensor_data()
         if data:
             return {
                 "status": "success",
                 "data": data,
                 "source": "Database",
-                "message": f"Error from ThingSpeak: {str(e)}, returning cached data"
+                "message": "Using cached data"
             }
         return {"status": "error", "message": str(e)}
+
+async def update_thingspeak_in_background():
+    """Update ThingSpeak data in the background without blocking"""
+    try:
+        thingspeak = get_thingspeak_client()
+        ts_data = thingspeak.get_latest_data()
+        if ts_data:
+            insert_sensor_data(
+                distance=ts_data['distance'],
+                temperature=ts_data['temperature'],
+                water_percentage=ts_data['water_percentage'],
+                water_liters=ts_data['water_liters'],
+                timestamp=ts_data['timestamp'],
+                entry_id=ts_data['entry_id']
+            )
+            print("[BACKGROUND] ThingSpeak data updated")
+    except Exception as e:
+        print(f"[BACKGROUND] Error updating ThingSpeak: {e}")
 
 @app.get("/api/v1/sensor/history")
 async def get_sensor_history(limit: int = 100):
