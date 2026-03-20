@@ -27,6 +27,18 @@ function AppContent() {
     setIsLoading(false);
   };
 
+  // FALLBACK: Force hide loading screen after 30 seconds (even if data not loaded)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn('[TIMEOUT] Loading took >30s, forcing display');
+        setIsLoading(false);
+      }
+    }, 30000); // 30 second max timeout
+
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
   return (
     <>
       {/* Loading Screen */}

@@ -1,11 +1,11 @@
 import React from 'react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useTheme } from '../context/ThemeContext';
 
 const LoadingScreen = () => {
   const { colors } = useTheme();
   const bgColor = colors?.bg || '#ffffff';
   const textColor = colors?.text || '#111827';
+  const primaryColor = colors?.primary || '#1e3a8a';
 
   return (
     <div
@@ -24,15 +24,17 @@ const LoadingScreen = () => {
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-        {/* Lottie Animation */}
-        <div style={{ width: '200px', height: '200px' }}>
-          <DotLottieReact
-            src="https://lottie.host/7ddf193e-52b1-4531-b355-0beecd5b43be/vaMdUk3Y4B.lottie"
-            loop
-            autoplay
-            style={{ width: '100%', height: '100%' }}
-          />
-        </div>
+        {/* Native Spinning Loader - FAST, NO EXTERNAL LOAD */}
+        <div
+          style={{
+            width: '60px',
+            height: '60px',
+            border: `4px solid ${colors?.border || '#e5e7eb'}`,
+            borderTop: `4px solid ${primaryColor}`,
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
 
         {/* Loading Text */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
@@ -51,7 +53,7 @@ const LoadingScreen = () => {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              backgroundColor: colors?.primary || '#1e3a8a',
+              backgroundColor: primaryColor,
               animation: 'bounce 1.4s infinite',
               animationDelay: '0s',
             }}
@@ -61,7 +63,7 @@ const LoadingScreen = () => {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              backgroundColor: colors?.primary || '#1e3a8a',
+              backgroundColor: primaryColor,
               animation: 'bounce 1.4s infinite',
               animationDelay: '0.2s',
             }}
@@ -71,7 +73,7 @@ const LoadingScreen = () => {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              backgroundColor: colors?.primary || '#1e3a8a',
+              backgroundColor: primaryColor,
               animation: 'bounce 1.4s infinite',
               animationDelay: '0.4s',
             }}
@@ -79,8 +81,13 @@ const LoadingScreen = () => {
         </div>
       </div>
 
-      {/* CSS Animation */}
+      {/* CSS Animations */}
       <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
         @keyframes bounce {
           0%, 80%, 100% {
             opacity: 0.5;
