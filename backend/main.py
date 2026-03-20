@@ -469,10 +469,40 @@ def create_predictions_table():
         cursor.close()
         conn.close()
 
+def create_activities_table():
+    """
+    Create the activities table to store activity recognition results
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS activities (
+                id SERIAL PRIMARY KEY,
+                node_id VARCHAR(50) DEFAULT 'node-1',
+                distance FLOAT,
+                diff FLOAT,
+                slope FLOAT,
+                activity VARCHAR(50),
+                confidence FLOAT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+        print("[OK] activities table created/exists")
+    except Exception as e:
+        print("Error creating activities table: " + str(e))
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
+
 def create_all_tables():
     """Create all required tables"""
     create_sensor_data_table()
     create_predictions_table()
+    create_activities_table()
 
 # ===== SENSOR DATA FUNCTIONS =====
 def insert_sensor_data(distance: float, temperature: float, water_percentage: float, 
@@ -620,13 +650,95 @@ def get_predictions_history(limit: int = 100):
         cursor.close()
         conn.close()
 
+def insert_activity(node_id: str, distance: float, diff: float, slope: float, 
+                   activity: str, confidence: float) -> bool:
+    """
+    Store activity prediction in database
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            INSERT INTO activities (node_id, distance, diff, slope, activity, confidence)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        ''', (node_id, distance, diff, slope, activity, confidence))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error storing activity: {e}")
+        conn.rollback()
+        return False
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_activities_history(node_id: str = "node-1", limit: int = 50):
+    """
+    Get activity prediction history from database
+    """
+    conn = get_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cursor.execute('''
+            SELECT * FROM activities 
+            WHERE node_id = %s 
+            ORDER BY created_at DESC 
+            LIMIT %s
+        ''', (node_id, limit))
+        results = cursor.fetchall()
+        return [dict(row) for row in results] if results else []
+    except Exception as e:
+        print(f"Error retrieving activities: {e}")
+        return []
+    finally:
+        cursor.close()
+        conn.close()
+
+# ===== DISTANCE BUFFER FOR ACTIVITY PREDICTION =====
+# Store last 3 distance readings to calculate diff and slope
+distance_buffer = {'distances': [], 'timestamps': []}
+MAX_BUFFER_SIZE = 3
+
+def update_distance_buffer(distance: float):
+    """Update distance buffer and return (diff, slope) if available"""
+    global distance_buffer
+    
+    current_time = datetime.now()
+    
+    # Add current distance to buffer
+    distance_buffer['distances'].append(distance)
+    distance_buffer['timestamps'].append(current_time)
+    
+    # Keep only last MAX_BUFFER_SIZE readings
+    if len(distance_buffer['distances']) > MAX_BUFFER_SIZE:
+        distance_buffer['distances'].pop(0)
+        distance_buffer['timestamps'].pop(0)
+    
+    # Calculate diff and slope
+    diff = 0.0
+    slope = 0.0
+    
+    if len(distance_buffer['distances']) >= 2:
+        # diff = change from previous distance
+        diff = distance_buffer['distances'][-1] - distance_buffer['distances'][-2]
+    
+    if len(distance_buffer['distances']) >= 3:
+        # slope = rate of change of diff
+        diff_prev = distance_buffer['distances'][-2] - distance_buffer['distances'][-3]
+        slope = diff - diff_prev
+    
+    return diff, slope
+
 # ===== FASTAPI APP =====
 app = FastAPI(title="Water Tank Monitoring System", version="1.0.0")
 
 # ===== CORS MIDDLEWARE =====
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://cap-task-f.onrender.com"],  # Allow all origins (change to specific domains in production)
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Allow all headers
@@ -639,6 +751,10 @@ class PredictionRequest(BaseModel):
     water_percent: float
     minute: int
     hour: int
+    node_id: str = "node-1"
+
+class ActivityPredictionRequest(BaseModel):
+    distance: float
     node_id: str = "node-1"
 
 # ===== API ENDPOINTS =====
@@ -983,6 +1099,183 @@ async def get_predictions_history_endpoint(limit: int = 100):
         "count": len(predictions),
         "data": predictions
     }
+
+@app.post("/api/v1/predict-activity")
+async def predict_activity_endpoint(request: ActivityPredictionRequest):
+    """
+    Predict water activity using activity classification model
+    Uses distance buffer to calculate diff and slope features
+    
+    Request body:
+    {
+        "distance": 24.5,
+        "node_id": "node-1"  (optional, defaults to "node-1")
+    }
+    
+    Response:
+    {
+        "status": "success",
+        "activity": "filling|washing_machine|flush|geyser|no_activity",
+        "confidence": 0.85,
+        "features": {
+            "distance": 24.5,
+            "diff": 0.5,
+            "slope": 0.2
+        },
+        "timestamp": ISO timestamp
+    }
+    """
+    try:
+        # Update distance buffer and get diff/slope
+        diff, slope = update_distance_buffer(request.distance)
+        
+        # Check if we have enough data
+        buffer_size = len(distance_buffer['distances'])
+        
+        if buffer_size < 1:
+            return {
+                "status": "error",
+                "message": "No distance data in buffer. Need at least 1 reading."
+            }
+        
+        # For now, use a simple heuristic-based activity detection
+        # Replace with actual ML model when activity classification model is available
+        activity, confidence = predict_activity_heuristic(
+            distance=request.distance,
+            diff=diff,
+            slope=slope
+        )
+        
+        # Store in activities database
+        insert_activity(
+            node_id=request.node_id,
+            distance=request.distance,
+            diff=diff,
+            slope=slope,
+            activity=activity,
+            confidence=confidence
+        )
+        
+        return {
+            "status": "success",
+            "activity": activity,
+            "confidence": confidence,
+            "features": {
+                "distance": request.distance,
+                "diff": round(diff, 3),
+                "slope": round(slope, 3)
+            },
+            "buffer_size": buffer_size,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+def predict_activity_heuristic(distance: float, diff: float, slope: float) -> tuple:
+    """
+    Heuristic-based activity prediction using distance features
+    Calibrated for 192cm tank height with 2000L capacity (updated from 45cm/20L)
+    
+    Args:
+        distance: Current distance reading (cm)
+        diff: Rate of change of distance (cm/reading)
+        slope: Rate of change of diff (cm²/reading²)
+    
+    Returns:
+        (activity: str, confidence: float)
+    """
+    from config import ACTIVITY_CLASSES, TANK_HEIGHT_CM
+    
+    # Initialize as no_activity
+    activity = "no_activity"
+    confidence = 0.5
+    
+    # Thresholds scaled for 192cm tank (was calibrated for 45cm)
+    # Scaling factor = 192/45 = 4.27x, so thresholds scaled down by ~4.27
+    
+    # Negative diff = distance decreasing = water level rising = FILLING
+    # Original threshold: -0.3 → Scaled: -0.07
+    if diff < -0.07:
+        activity = "filling"
+        confidence = 0.8 + min(abs(diff) * 0.1, 0.15)
+    
+    # Large positive slope + positive diff = rapid change = FLUSH
+    # Original threshold: slope > 0.8 → Scaled: slope > 0.19
+    # Original threshold: diff > 0.2 → Scaled: diff > 0.047
+    elif slope > 0.19 and diff > 0.047:
+        activity = "flush"
+        confidence = 0.75 + min(slope * 0.05, 0.15)
+    
+    # Small negative diff = gradual decrease = GEYSER (continuous flow)
+    # Original range: -0.2 to 0 → Scaled: -0.047 to 0
+    elif -0.047 <= diff < 0:
+        activity = "geyser"
+        confidence = 0.65
+    
+    # Small positive diff = washing machine (intermittent)
+    # Original range: 0 to 0.3 → Scaled: 0 to 0.07
+    # Original slope range: < 0.3 → Scaled: < 0.07
+    elif 0 <= diff <= 0.07 and abs(slope) < 0.07:
+        activity = "washing_machine"
+        confidence = 0.6
+    
+    # No significant change = NO_ACTIVITY
+    else:
+        activity = "no_activity"
+        confidence = 0.95 if abs(diff) < 0.1 else 0.5
+    
+    # Clamp confidence to [0, 1]
+    confidence = max(0.0, min(1.0, confidence))
+    
+    return activity, confidence
+
+@app.get("/api/v1/activities/history")
+async def get_activities_history_endpoint(node_id: str = "node-1", limit: int = 50):
+    """
+    Get recent activity predictions history
+    """
+    try:
+        activities = get_activities_history(node_id=node_id, limit=limit)
+        return {
+            "status": "success",
+            "count": len(activities),
+            "node_id": node_id,
+            "data": activities
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+@app.get("/api/v1/activities/latest")
+async def get_latest_activity(node_id: str = "node-1"):
+    """
+    Get the most recent activity prediction
+    """
+    try:
+        activities = get_activities_history(node_id=node_id, limit=1)
+        if activities:
+            return {
+                "status": "success",
+                "activity": activities[0]
+            }
+        else:
+            return {
+                "status": "success",
+                "activity": None,
+                "message": "No activities recorded yet"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 @app.post("/api/v1/test")
 async def test_prediction_endpoint():

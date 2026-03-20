@@ -1,9 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, Moon, Sun, Bell } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 const Header = ({ onMenuClick, isConnected }) => {
   const { colors, theme, toggleTheme } = useTheme();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const headerBg = theme === 'day' ? '#ffffff' : '#1a1a1a';
   const headerBorder = theme === 'day' ? '#e5e7eb' : '#2d2d2d';
@@ -14,13 +24,13 @@ const Header = ({ onMenuClick, isConnected }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '12px 24px',
+        padding: '8px 24px',
         borderBottom: `1px solid ${headerBorder}`,
         backgroundColor: headerBg,
         height: '56px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 30,
+        minHeight: '56px',
+        flexShrink: 0,
+        zIndex: 1000,
       }}
     >
       {/* Left Side */}
@@ -32,10 +42,15 @@ const Header = ({ onMenuClick, isConnected }) => {
             border: 'none',
             cursor: 'pointer',
             color: colors.text,
-            padding: '6px',
-            display: 'none',
+            padding: '8px 12px',
             borderRadius: '6px',
-            transition: 'background-color 0.2s ease',
+            transition: 'all 0.2s ease',
+            display: isMobile ? 'flex' : 'none',
+            fontSize: '18px',
+            minWidth: '44px',
+            minHeight: '44px',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = theme === 'day' ? '#f0f0f0' : '#2d2d2d';
@@ -47,18 +62,15 @@ const Header = ({ onMenuClick, isConnected }) => {
           <Menu size={20} />
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{ fontSize: '14px', fontWeight: '700', color: colors.textSecondary, letterSpacing: '0.5px', textTransform: 'uppercase' }}>KIET</span>
-          <h1
+          <img
+            src="https://www.kietgroup.info/Images/KIETGroup.jpg"
+            alt="KIET Logo"
             style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: colors.text,
-              margin: 0,
-              letterSpacing: '-0.5px',
+              height: '40px',
+              width: 'auto',
+              objectFit: 'contain',
             }}
-          >
-            Dashboard
-          </h1>
+          />
         </div>
       </div>
 

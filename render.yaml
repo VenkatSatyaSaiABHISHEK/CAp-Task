@@ -7,19 +7,19 @@ services:
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DB_HOST
-        value: pg-33c86bd8-water-level.f.aivencloud.com
+        value: YOUR_DB_HOST
       - key: DB_PORT
-        value: 24446
+        value: YOUR_DB_PORT
       - key: DB_NAME
-        value: defaultdb
+        value: YOUR_DB_NAME
       - key: DB_USER
-        value: avnadmin
+        value: YOUR_DB_USER
       - key: DB_PASSWORD
         sync: false
       - key: DB_SSLMODE
         value: require
       - key: FRONTEND_URL
-        value: https://water-tank-frontend.onrender.com
+        value: https://your-frontend-url.onrender.com
 
   - type: web
     name: water-tank-frontend
@@ -29,7 +29,7 @@ services:
     publishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://water-tank-backend.onrender.com
+        value: https://your-backend-url.onrender.com
 
   - type: pserv
     name: water-tank-db

@@ -3,13 +3,26 @@ Configuration for ML Model and Data Preprocessing
 Easily adjust these values based on your actual sensor ranges
 """
 
+# Water Activity Classes - Predicted by Activity Recognition Model
+ACTIVITY_CLASSES = [
+    'no_activity',      # Tank idle, no water usage
+    'filling',          # Tank being refilled from source
+    'flush',            # Toilet flush or direct release
+    'washing_machine',  # Washing machine consuming water
+    'geyser'            # Water heater/geyser usage
+]
+
+# ===== TANK CONFIGURATION =====
+# Your IoT Device Specifications
+TANK_HEIGHT_CM = 192        # Total tank height in cm
+TANK_CAPACITY_LITERS = 2000  # Total tank capacity in liters
+
 # Feature ranges for MinMaxScaler normalization
-# Adjust these based on your actual sensor data ranges
-# If sensors read values outside these ranges, update them here
+# Calibrated for your tank specifications (192cm × 2000L)
 FEATURE_RANGES = {
     'distance': {
-        'min': 5,      # Minimum expected distance in cm
-        'max': 50,     # Maximum expected distance in cm
+        'min': 0,      # Full tank distance (sensor at top of 192cm tank)
+        'max': 192,    # Empty tank distance (192cm from sensor to bottom)
         'description': 'Ultrasonic sensor distance reading (cm)',
         'unit': 'cm'
     },

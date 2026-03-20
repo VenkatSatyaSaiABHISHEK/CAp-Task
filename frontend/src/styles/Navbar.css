@@ -98,8 +98,8 @@
 /* Icon Buttons */
 .navbar-icon-btn {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -132,8 +132,8 @@
 
 /* Profile Button */
 .profile-btn {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   border: none;
   cursor: pointer;
@@ -153,7 +153,22 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 8px;
+  padding: 8px 12px;
+  font-size: 20px;
+  line-height: 1;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  color: inherit;
+}
+
+.mobile-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  transform: scale(1.05);
 }
 
 .navbar-mobile-menu {
@@ -202,6 +217,9 @@
 
   .navbar-right {
     gap: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
   }
 
   .connection-chip {
@@ -210,6 +228,18 @@
 
   .mobile-menu-btn {
     display: flex;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-menu-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    transform: scale(1.08);
   }
 
   .navbar-mobile-menu {

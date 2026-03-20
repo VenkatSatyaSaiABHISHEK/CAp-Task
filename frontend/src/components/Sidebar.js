@@ -25,19 +25,39 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   return (
     <>
+      {/* Mobile Overlay */}
+      {isOpen && window.innerWidth <= 768 && (
+        <div
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 35,
+            animation: 'fadeIn 0.2s ease',
+          }}
+        />
+      )}
       {/* Sidebar */}
       <div
         style={{
           width: '260px',
-          height: '100vh',
+          height: '100%',
           backgroundColor: sidebarBg,
           borderRight: `1px solid ${sidebarBorder}`,
           display: 'flex',
           flexDirection: 'column',
-          zIndex: 50,
+          zIndex: 40,
           position: 'relative',
           flexShrink: 0,
+          overflow: 'hidden',
+          // Mobile responsive: hide on mobile by default
+          ...(window.innerWidth <= 768 && !isOpen && { display: 'none' })
         }}
+        className={isOpen ? 'sidebar open' : 'sidebar'}
       >
 
         {/* Header */}
@@ -47,33 +67,38 @@ const Sidebar = ({ isOpen, onClose }) => {
           borderBottom: `1px solid ${sidebarBorder}`,
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'flex-end',
           gap: '16px',
         }}
       >
-        <p
-          style={{
-            fontSize: '14px',
-            fontWeight: '700',
-            color: colors.textSecondary,
-            margin: 0,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            minWidth: 'fit-content',
-          }}
-        >
-          KIET
-        </p>
-        <h2
-          style={{
-            fontSize: '14px',
-            fontWeight: '700',
-            color: colors.text,
-            margin: 0,
-            letterSpacing: '-0.5px',
-          }}
-        >
-          Dashboard
-        </h2>
+        {/* Mobile Close Button */}
+        {window.innerWidth <= 768 && (
+          <button
+            onClick={onClose}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '4px',
+              color: colors.text,
+              transition: 'all 0.2s ease',
+              minHeight: '32px',
+              minWidth: '32px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            <X size={20} strokeWidth={2} />
+          </button>
+        )}
       </div>
 
       {/* Navigation Items */}
@@ -95,6 +120,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                 key={item.path}
                 to={item.path}
                 style={{ textDecoration: 'none' }}
+                onClick={() => {
+                  // Close sidebar on mobile after navigation
+                  if (window.innerWidth <= 768) {
+                    onClose();
+                  }
+                }}
               >
                 <div
                   style={{

@@ -334,25 +334,4 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .chat-panel {
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    border-radius: 0;
-    right: 0;
-    bottom: 0;
-    position: fixed;
-    top: 0;
-  }
-
-  .chat-panel.collapsed {
-    width: calc(100% - 20px);
-    height: auto;
-    max-height: 60px;
-    right: 10px;
-    bottom: 10px;
-    top: auto;
-    border-radius: 12px;
-  }
-}
+@media (max-width: 768px) {\n  .chat-panel {\n    width: 100%;\n    height: 100%;\n    max-height: none;\n    border-radius: 0;\n    right: 0;\n    bottom: 0;\n    position: fixed;\n    top: 0;\n  }\n\n  .chat-panel.collapsed {\n    width: calc(100% - 20px);\n    height: auto;\n    max-height: 60px;\n    right: 10px;\n    bottom: 10px;\n    top: auto;\n    border-radius: 12px;\n  }\n\n  .chat-header {\n    padding: 12px 16px;\n  }\n\n  .chat-title h3 {\n    font-size: 13px;\n  }\n\n  .messages-container {\n    padding: 12px;\n    gap: 8px;\n  }\n}\n\n@media (max-width: 480px) {\n  .chat-panel {\n    width: 100%;\n    max-height: 70vh;\n  }\n\n  .chat-header {\n    padding: 8px 12px;\n  }\n\n  .chat-header h3 {\n    font-size: 11px;\n  }\n\n  .chat-status {\n    font-size: 9px;\n  }\n\n  .messages-container {\n    padding: 8px;\n    gap: 6px;\n    max-height: calc(70vh - 100px);\n  }\n\n  .message {\n    gap: 6px;\n  }\n\n  .message-icon {\n    width: 22px;\n    height: 22px;\n    font-size: 11px;\n  }\n\n  .message-text {\n    font-size: 11px;\n  }\n\n  .message-time {\n    font-size: 9px;\n  }\n\n  .chat-footer {\n    padding: 6px 10px;\n  }\n\n  .footer-text {\n    font-size: 9px;\n  }\n}"

@@ -13,6 +13,7 @@ const Home = ({ onMenuClick, setIsConnected }) => {
   const [lastSync, setLastSync] = useState('Never');
   const [systemUptime] = useState('24h 15m');
   const [dataPoints] = useState(15340);
+  const [showActivityPanel, setShowActivityPanel] = useState(false);
   const [messages, setMessages] = useState([
     { id: 1, text: 'System initialized and ready', type: 'info', timestamp: new Date(Date.now() - 5000) },
     { id: 2, text: 'Backend connected successfully', type: 'success', timestamp: new Date() },
@@ -21,7 +22,7 @@ const Home = ({ onMenuClick, setIsConnected }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await apiEndpoints.getSensorLatest();
+        const response = await apiEndpoints.getLatestSensorData();
         if (response.data && response.data.data) {
           const data = response.data.data;
           setSensorData({
@@ -66,6 +67,7 @@ const Home = ({ onMenuClick, setIsConnected }) => {
     minHeight: '100%',
     transition: 'background-color 0.3s ease',
     padding: '32px 24px',
+    paddingTop: 'calc(56px + 32px)',
   };
 
   const containerStyle = {
@@ -111,10 +113,11 @@ const Home = ({ onMenuClick, setIsConnected }) => {
   };
 
   return (
-    <div style={pageStyle}>
-      <div style={containerStyle}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', alignItems: 'start' }}>
-          <div>
+    <>
+      <div style={pageStyle}>
+        <div style={containerStyle}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', alignItems: 'start' }}>
+            <div>
             {/* Page Title */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -317,8 +320,8 @@ const Home = ({ onMenuClick, setIsConnected }) => {
               <p style={sectionSubtitleStyle}>Operational status and details</p>
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                  display: 'flex',
+                  flexDirection: 'column',
                   gap: '12px',
                 }}
               >
@@ -463,37 +466,24 @@ const Home = ({ onMenuClick, setIsConnected }) => {
                 </div>
               </div>
             </motion.div>
+            </div>
           </div>
-
-          {/* Right Sidebar - Chat Notification Panel */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              height: 'fit-content',
-            }}
-          >
-            <ChatNotificationPanel messages={messages} />
-          </motion.div>
         </div>
       </div>
+
+      <ChatNotificationPanel 
+        messages={messages} 
+        isOpen={showActivityPanel}
+        onToggle={setShowActivityPanel}
+      />
 
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
-        
-        @media (max-width: 768px) {
-          div[style*="grid-template-columns: 1fr 320px"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
       `}</style>
-    </div>
+    </>
   );
 };
 
