@@ -6,7 +6,7 @@ import ChatNotificationPanel from '../components/ChatNotificationPanel';
 import { apiEndpoints } from '../utils/api';
 import '../styles/Home.css';
 
-const Home = ({ onMenuClick, setIsConnected }) => {
+const Home = ({ onMenuClick, setIsConnected, onDataLoaded }) => {
   const { colors, theme } = useTheme();
   const [sensorData, setSensorData] = useState(null);
   const [isConnected, setIsConnectedLocal] = useState(false);
@@ -37,11 +37,17 @@ const Home = ({ onMenuClick, setIsConnected }) => {
           const now = new Date();
           setLastSync(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
           addMessage(`Water level updated to ${data.water_percentage}%`, 'success');
+          
+          // Signal that data is loaded
+          if (onDataLoaded) onDataLoaded();
         }
       } catch (error) {
         setIsConnectedLocal(false);
         if (setIsConnected) setIsConnected(false);
         addMessage('Connection error: Unable to fetch sensor data', 'error');
+        
+        // Still signal data loading done (even if error)
+        if (onDataLoaded) onDataLoaded();
       }
     };
 

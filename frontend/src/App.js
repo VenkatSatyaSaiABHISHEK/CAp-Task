@@ -22,14 +22,10 @@ function AppContent() {
 
   const bgColor = colors?.bg || '#ffffff';
 
-  // Simulate app initialization loading (2.5 seconds)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, []);
+  // Callback when data is loaded from Home page
+  const handleDataLoaded = () => {
+    setIsLoading(false);
+  };
 
   return (
     <>
@@ -51,7 +47,7 @@ function AppContent() {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', backgroundColor: bgColor }}>
                 <Routes>
-                  <Route path="/" element={<Home onMenuClick={() => setSidebarOpen(!sidebarOpen)} setIsConnected={setIsConnected} />} />
+                  <Route path="/" element={<Home onMenuClick={() => setSidebarOpen(!sidebarOpen)} setIsConnected={setIsConnected} onDataLoaded={handleDataLoaded} />} />
                   <Route path="/analytics" element={<Analytics onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
                   <Route path="/prediction" element={<Prediction onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
                   <Route path="/history" element={<History onMenuClick={() => setSidebarOpen(!sidebarOpen)} />} />
