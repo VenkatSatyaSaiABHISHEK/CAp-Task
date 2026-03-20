@@ -27,7 +27,7 @@ const LoadingScreen = () => {
         {/* Lottie Animation - Loading Spinner */}
         <div style={{ width: '120px', height: '120px' }}>
           <DotLottieReact
-            src="https://lottie.host/4ac82ffa-0cf8-4d96-8fcd-1cd3b0d611ba/vZMO2pSk8D.lottie"
+            src="https://lottie.host/7ddf193e-52b1-4531-b355-0beecd5b43be/vaMdUk3Y4B.lottie"
             loop
             autoplay
             style={{ width: '100%', height: '100%' }}
