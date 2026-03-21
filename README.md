@@ -39,7 +39,7 @@ The Water Tank Monitoring System is an intelligent IoT solution that provides re
 ![Water Tank Indicator](./Images/Screenshot%202026-03-21%20095547.png)
 *Interactive water tank visualization with fill animation and wave effects*
 
-### 3. Sensor Readings
+### 3. ChatBot
 ![Sensor Data Display](./Images/Screenshot%202026-03-21%20095604.png)
 *Real-time sensor measurements (temperature, distance, water level)*
 
