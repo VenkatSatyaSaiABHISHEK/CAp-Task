@@ -47,36 +47,36 @@ The Water Tank Monitoring System is an intelligent IoT solution that provides re
 ![Status Panel](./Images/Screenshot%202026-03-21%20095615.png)
 *System health and connection status indicators*
 
-### 5. Analytics Dashboard
+### 5.Main Dashboard
 ![Analytics View](./Images/Screenshot%202026-03-21%20095627.png)
 *Historical data visualization and trends analysis*
 
-### 6. Notifications & Alerts
+### 6. Analytics Dashboard
 ![Notification Feed](./Images/Screenshot%202026-03-21%20095652.png)
 *Real-time alerts and system notifications*
 
-### 7. Mobile Responsive Design
+### 7. Prediction page with Output
 ![Mobile View](./Images/Screenshot%202026-03-21%20095722.png)
 *Optimized interface for mobile and tablet devices*
 
-### 8. Advanced Settings
-![Settings Panel](./Images/Screenshot%202026-03-21%20095808.png)
-*System configuration and control interface*
-
-### 9. System Architecture
-![Architecture Diagram](./Images/Screenshot%202026-03-21%20100402.png)
-*Complete IoT system architecture*
-
-### 10. Backend Monitoring
+### 8. Api Status
 ![Backend Status](./Images/Screenshot%202026-03-21%20100617.png)
+*this show the Status of Ml , database and RunningStatus*
+
+### 9. Api Sensor Data
+![IoT Devices](./Images/Screenshot%202026-03-21%20100635.png)
+*this show the senor data*
+
+### 10. prediction History
+![prediction](./Images/Screenshot%2026-03-21%100731.png)
 *Backend API health and system metrics*
 
-### 11. IoT Device Integration
-![IoT Devices](./Images/Screenshot%202026-03-21%20100635.png)
+### 11.Database connection
+
 *ESP32/Arduino sensor connectivity and data flow*
 
 ### 12. Advanced Analytics
-![Data Analytics](./Images/Screenshot%202026-03-21%20100731.png)
+
 *Machine learning predictions and data insights*
 
 ---
