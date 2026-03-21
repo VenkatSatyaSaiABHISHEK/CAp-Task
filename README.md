@@ -67,17 +67,17 @@ The Water Tank Monitoring System is an intelligent IoT solution that provides re
 ![IoT Devices](./Images/Screenshot%202026-03-21%20100635.png)
 *this show the senor data*
 
-### 10. prediction History
-![prediction](./Images/Screenshot%2026-03-21%100731.png)
-*Backend API health and system metrics*
+### 10. Prediction History
+![Water Prediction](./Images/Screenshot%202026-03-21%20100731.png)
+*ML model predictions with confidence scores and water level forecasts*
 
-### 11.Database connection
+### 11. Database Connection & API Testing
+![Sensor Data Response](./Images/Screenshot%202026-03-21%20092221.png)
+*Real API response showing sensor data in JSON format via Postman*
 
-*ESP32/Arduino sensor connectivity and data flow*
-
-### 12. Advanced Analytics
-
-*Machine learning predictions and data insights*
+### 12. Aiven Cloud Database
+![Aiven PostgreSQL](./Images/Screenshot%202026-03-21%20103432.png)
+*PostgreSQL database hosting on Aiven Cloud with data management dashboard*
 
 ---
 
