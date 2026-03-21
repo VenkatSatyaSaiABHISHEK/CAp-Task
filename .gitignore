@@ -58,7 +58,8 @@ frontend/out/
 *.sqlite3
 
 # ML Models (keep structure but ignore large files)
-backend/saved_models/*.h5
+# Commented out to allow model deployment
+# backend/saved_models/*.h5
 backend/saved_models/*.keras
 backend/saved_models/*.pkl
 
